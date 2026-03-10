@@ -573,12 +573,105 @@ async function loadStats() {
 
 document.querySelector('#refreshStats')?.addEventListener('click', loadStats);
 
+/* ─── Payment sheet ─── */
+const paySheet  = document.querySelector('#paySheet');
+const cardSheet = document.querySelector('#cardSheet');
+
+function openPaySheet() {
+  const card = localStorage.getItem('pi_card') || '';
+  const hint = document.querySelector('#payCardHint');
+  if (hint) hint.textContent = card ? maskCard(card) : 'Реквізити картки';
+  paySheet?.removeAttribute('aria-hidden');
+}
+
+function closePaySheet() { paySheet?.setAttribute('aria-hidden', 'true'); }
+
+function openCardSheet() {
+  closePaySheet();
+  const card = localStorage.getItem('pi_card') || '';
+  const display = document.querySelector('#cardNumDisplay');
+  if (display) display.textContent = card || '—';
+  const tgBtn = document.querySelector('#cardTgBtn');
+  if (tgBtn) {
+    const tg = appConfig.links.telegram;
+    tgBtn.href = tg || '#';
+    tgBtn.classList.toggle('is-disabled', !tg);
+    if (tg) { tgBtn.removeAttribute('aria-disabled'); }
+  }
+  cardSheet?.removeAttribute('aria-hidden');
+}
+
+function closeCardSheet() { cardSheet?.setAttribute('aria-hidden', 'true'); }
+
+function maskCard(card) {
+  const clean = card.replace(/\s/g, '');
+  if (clean.length <= 8) return card;
+  return clean.slice(0, 4) + ' •••• •••• ' + clean.slice(-4);
+}
+
+// Intercept all payment link clicks → show sheet
+document.addEventListener('click', e => {
+  const payLink = e.target.closest('[data-link="payment"]');
+  if (payLink) { e.preventDefault(); openPaySheet(); }
+});
+
+document.querySelector('#paySheetBd')?.addEventListener('click', closePaySheet);
+document.querySelector('#paySheetCancel')?.addEventListener('click', closePaySheet);
+
+document.querySelector('#payOptCrypto')?.addEventListener('click', () => {
+  const hint = document.querySelector('#cryptoHint');
+  if (!hint) return;
+  const orig = hint.textContent;
+  hint.textContent = '🔜 Скоро буде доступно';
+  setTimeout(() => { hint.textContent = orig; }, 2500);
+});
+
+document.querySelector('#payOptCard')?.addEventListener('click', () => {
+  const card = localStorage.getItem('pi_card');
+  if (!card) {
+    const hint = document.querySelector('#payCardHint');
+    if (hint) {
+      const orig = hint.textContent;
+      hint.textContent = '⚠️ Реквізити ще не налаштовані';
+      setTimeout(() => { hint.textContent = orig; }, 2500);
+    }
+    return;
+  }
+  openCardSheet();
+});
+
+document.querySelector('#payOptTg')?.addEventListener('click', () => {
+  const link = appConfig.links.telegram;
+  if (link) window.open(link, '_blank', 'noreferrer,noopener');
+  closePaySheet();
+});
+
+document.querySelector('#cardSheetBd')?.addEventListener('click', closeCardSheet);
+document.querySelector('#cardSheetCancel')?.addEventListener('click', () => {
+  closeCardSheet();
+  setTimeout(openPaySheet, 50);
+});
+
+document.querySelector('#copyCardBtn')?.addEventListener('click', () => {
+  const card = localStorage.getItem('pi_card') || '';
+  if (!card) return;
+  navigator.clipboard.writeText(card).then(() => {
+    const btn = document.querySelector('#copyCardBtn');
+    if (!btn) return;
+    btn.textContent = '✓ Скопійовано';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Копіювати'; btn.classList.remove('copied'); }, 2500);
+  }).catch(() => {});
+});
+
 /* ─── Admin: config form ─── */
 function loadConfig() {
   const saved = JSON.parse(localStorage.getItem('pi_links') || '{}');
   if (saved.telegram) document.querySelector('#cfgTelegram').value = saved.telegram;
   if (saved.payment)  document.querySelector('#cfgPayment').value  = saved.payment;
   if (saved.bybit)    document.querySelector('#cfgBybit').value    = saved.bybit;
+  const cfgCard = document.querySelector('#cfgCard');
+  if (cfgCard) cfgCard.value = localStorage.getItem('pi_card') || '';
 }
 
 function applyConfig(links) {
@@ -597,6 +690,9 @@ document.querySelector('#saveConfig')?.addEventListener('click', () => {
     bybit:    document.querySelector('#cfgBybit').value.trim(),
   };
   localStorage.setItem('pi_links', JSON.stringify(links));
+  const card = document.querySelector('#cfgCard')?.value.trim() || '';
+  if (card) localStorage.setItem('pi_card', card);
+  else localStorage.removeItem('pi_card');
   applyConfig(links);
   const msg = document.querySelector('#configMsg');
   if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
