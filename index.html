@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Passive Income System MVP</title>
+    <meta
+      name="description"
+      content="MVP-веббот для системи пасивного доходу: 7 головних кнопок, короткі екрани, FAQ, результати, оплата та сторінка після оплати."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background-orb background-orb--left"></div>
+    <div class="background-orb background-orb--right"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#hero">
+        <span class="brand__mark">PI</span>
+        <span class="brand__text">
+          <strong>Passive Income System</strong>
+          <small>MVP веббот для продажу</small>
+        </span>
+      </a>
+
+      <div class="topbar__actions">
+        <a class="button button--ghost" data-link="telegram" href="#">Telegram</a>
+        <a class="button button--primary" href="#bot">Відкрити бота</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero reveal" id="hero">
+        <div class="hero__copy">
+          <span class="eyebrow">Готові тексти вже всередині</span>
+          <h1>Простий веббот для системи пасивного доходу без перегрузу.</h1>
+          <p class="hero__lead">
+            Людина з TikTok повинна швидко зрозуміти, що це за система, які тут ризики,
+            що вона отримає і як оплатити. Саме під це зараз і зібраний бот.
+          </p>
+
+          <div class="hero__actions">
+            <a class="button button--primary" href="#bot">Запустити MVP</a>
+            <a class="button button--ghost" data-link="payment" href="#">Отримати доступ</a>
+          </div>
+
+          <div class="hero__chips">
+            <span>7 головних кнопок</span>
+            <span>Короткі живі тексти</span>
+            <span>FAQ та скріни</span>
+            <span>Оплата і after-pay екран</span>
+          </div>
+        </div>
+
+        <aside class="hero-panel reveal">
+          <span class="section-tag">Що людина має зрозуміти</span>
+          <ul class="simple-list">
+            <li>що це</li>
+            <li>чи їй це підходить</li>
+            <li>чи є сенс</li>
+            <li>які ризики</li>
+            <li>що вона отримає</li>
+            <li>як оплатити</li>
+          </ul>
+          <div class="hero-panel__note">
+            Це MVP-каркас: далі ви вставляєте свої скріни, даєте людям на тест і дивитесь,
+            де вони відвалюються.
+          </div>
+        </aside>
+      </section>
+
+      <section class="bot-stage reveal" id="bot">
+        <div class="bot-stage__intro">
+          <span class="section-tag">Каркас бота</span>
+          <h2>Фінальні тексти вже зашиті в екрани і готові до наповнення скрінами.</h2>
+          <p>
+            Зараз це простий MVP без зайвого пафосу: 7 головних кнопок, короткі блоки,
+            FAQ, результати, оплата і сторінка після оплати.
+          </p>
+
+          <div class="info-stack">
+            <article class="info-card">
+              <h3>Коротко і по суті</h3>
+              <p>Кожен екран закриває одне питання і не перевантажує людину текстом.</p>
+            </article>
+            <article class="info-card">
+              <h3>Легко змінювати</h3>
+              <p>Усі тексти, FAQ, кнопки і місця під скріни редагуються в одному файлі.</p>
+            </article>
+            <article class="info-card">
+              <h3>Готово до тесту</h3>
+              <p>Можна швидко підставити свої матеріали і віддати на перевірку 5–10 людям.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="bot-shell">
+          <div class="bot-shell__header">
+            <div>
+              <strong>Passive Income Bot</strong>
+              <small>7 кнопок • короткі екрани • оплата</small>
+            </div>
+            <span class="bot-status">online</span>
+          </div>
+
+          <div class="bot-progress">
+            <span id="progressText">Екран 1 з 9</span>
+            <div class="progress-bar"><span id="progressFill"></span></div>
+          </div>
+
+          <div class="quick-actions" id="quickActions" aria-label="Головні кнопки бота"></div>
+
+          <article class="screen-card" id="screenCard">
+            <div class="screen-content" id="screenContent"></div>
+          </article>
+
+          <div class="bot-shell__footer">
+            <button class="button button--ghost button--small" id="prevButton" type="button">
+              Назад
+            </button>
+
+            <div class="bot-shell__footer-actions">
+              <button class="button button--ghost button--small" id="nextButton" type="button">
+                Далі
+              </button>
+              <a class="button button--primary button--small" data-link="payment" href="#"
+                >Отримати доступ</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="workflow reveal">
+        <div class="section-head">
+          <span class="section-tag">Що далі</span>
+          <h2>Справжня робота починається після запуску.</h2>
+          <p>
+            Коли бот готовий, далі не зупиняємось: вставляємо свої скріни, даємо людям пройти
+            воронку, дивимось де вони відвалюються і допилюємо слабкі місця.
+          </p>
+        </div>
+
+        <div class="workflow-grid">
+          <article class="workflow-card">
+            <span>1</span>
+            <p>Додаєте свої тексти і скріни</p>
+          </article>
+          <article class="workflow-card">
+            <span>2</span>
+            <p>Підключаєте оплату або повідомлення в Telegram</p>
+          </article>
+          <article class="workflow-card">
+            <span>3</span>
+            <p>Тестуєте на 5–10 людях</p>
+          </article>
+          <article class="workflow-card">
+            <span>4</span>
+            <p>Дивитесь, де люди зупиняються</p>
+          </article>
+          <article class="workflow-card">
+            <span>5</span>
+            <p>Правите слабкі екрани</p>
+          </article>
+          <article class="workflow-card">
+            <span>6</span>
+            <p>Повторюєте цикл ще раз</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        У бота вже вставлені фінальні тексти. Далі лишається підставити свої скріни,
+        точне посилання на оплату і протестувати воронку на живій аудиторії.
+      </p>
+
+      <div class="footer__actions">
+        <a data-link="telegram" href="#">@KarabinJeka</a>
+        <a data-link="bybit" href="#">Bybit -10$</a>
+      </div>
+    </footer>
+
+    <div class="sticky-cta">
+      <div>
+        <strong>100$ одноразово</strong>
+        <small>канал, інструменти, інструкції, оновлення</small>
+      </div>
+      <a class="button button--primary button--small" data-link="payment" href="#">Отримати доступ</a>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

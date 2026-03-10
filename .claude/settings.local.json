@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/toper/.ssh/**)",
+      "Bash(ssh-keygen -l -f ~/.ssh/known_hosts)",
+      "Bash(git config --global user.name)",
+      "Bash(git config --global user.email)",
+      "Bash(gh auth status)",
+      "Bash(ssh -o ConnectTimeout=5 -o BatchMode=yes root@185.68.16.125 \"whoami && ls /var/www/ 2>/dev/null || ls /home/ 2>/dev/null\")",
+      "Bash(ssh -o ConnectTimeout=5 -o BatchMode=yes root@185.233.45.103 \"whoami && ls /var/www/ 2>/dev/null && ls /home/ 2>/dev/null\")",
+      "Bash(nmap -p 22,2222,2022,8022 185.68.16.125)"
+    ]
+  }
+}
