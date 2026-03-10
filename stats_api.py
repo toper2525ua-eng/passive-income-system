@@ -74,6 +74,7 @@ CORS(app, origins=[
 
 DB_PATH   = os.path.join(os.path.dirname(__file__), "stats.db")
 ADMIN_KEY = "pisystem_admin_2026"
+OWNER_ID  = "6400309586"
 
 
 def get_db():
@@ -90,6 +91,12 @@ def init_db():
             ts      TEXT    NOT NULL,
             screen  TEXT    DEFAULT '',
             event   TEXT    DEFAULT 'view'
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS admins (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            entry   TEXT    UNIQUE NOT NULL
         )
     """)
     conn.commit()
@@ -148,6 +155,62 @@ def stats():
         "today":   today_count,
         "screens": [{"screen": r["screen"], "count": r["c"]} for r in screens],
     })
+
+
+@app.route("/api/check-admin", methods=["GET"])
+def check_admin():
+    tg_id    = request.args.get("id", "")
+    username = request.args.get("username", "").lower()
+    if tg_id == OWNER_ID:
+        return jsonify({"admin": True})
+    conn    = get_db()
+    entries = [r["entry"] for r in conn.execute("SELECT entry FROM admins").fetchall()]
+    conn.close()
+    is_admin = tg_id in entries or (username and ("@" + username) in entries)
+    return jsonify({"admin": is_admin})
+
+
+@app.route("/api/admins", methods=["GET"])
+def get_admins():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    conn    = get_db()
+    entries = [r["entry"] for r in conn.execute("SELECT entry FROM admins ORDER BY id").fetchall()]
+    conn.close()
+    return jsonify({"owner": OWNER_ID, "admins": entries})
+
+
+@app.route("/api/admins", methods=["POST"])
+def add_admin():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    data  = request.get_json(silent=True) or {}
+    entry = data.get("entry", "").strip()
+    if not entry:
+        return jsonify({"error": "empty"}), 400
+    conn = get_db()
+    try:
+        conn.execute("INSERT INTO admins (entry) VALUES (?)", (entry,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        pass
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admins/remove", methods=["POST"])
+def remove_admin():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    data  = request.get_json(silent=True) or {}
+    entry = data.get("entry", "").strip()
+    if not entry or entry == OWNER_ID:
+        return jsonify({"error": "cannot remove owner"}), 400
+    conn = get_db()
+    conn.execute("DELETE FROM admins WHERE entry = ?", (entry,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

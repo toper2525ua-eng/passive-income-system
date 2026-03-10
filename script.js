@@ -522,45 +522,41 @@ function trackView(screen) {
 }
 
 /* ─── Admin list helpers ─── */
-const ADMINS_KEY = 'pi_admins';
-
-function getAdminList() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(ADMINS_KEY) || '[]');
-    return Array.from(new Set([ADMIN_ID, ...stored]));
-  } catch { return [ADMIN_ID]; }
-}
-
-function saveAdminList(list) {
-  // Never store the hardcoded owner — it's always added in getAdminList()
-  const filtered = list.filter(id => id !== ADMIN_ID);
-  localStorage.setItem(ADMINS_KEY, JSON.stringify(filtered));
-}
-
-function renderAdminsList() {
+async function renderAdminsList() {
   const listEl = document.querySelector('#adminsList');
   if (!listEl) return;
-  const list = getAdminList();
-  if (!list.length) {
-    listEl.innerHTML = '<p class="admin-list-empty">Немає адмінів</p>';
-    return;
-  }
-  listEl.innerHTML = list.map(id => `
-    <div class="admin-id-row">
-      <span class="admin-id-crown">${id === ADMIN_ID ? '👑' : '👤'}</span>
-      <span class="admin-id-val">${id}</span>
-      ${id === ADMIN_ID
-        ? '<span class="admin-id-tag admin-id-tag--owner">власник</span>'
-        : `<button class="admin-id-remove" data-id="${id}" type="button" aria-label="Видалити">✕</button>`}
-    </div>`).join('');
+  listEl.innerHTML = '<p class="admin-list-empty">Завантаження…</p>';
+  try {
+    const res  = await fetch(`${API_BASE}/admins?key=${STATS_KEY}`);
+    const data = await res.json();
+    const owner   = data.owner || '';
+    const entries = data.admins || [];
+    const all = [
+      { entry: owner, isOwner: true },
+      ...entries.map(e => ({ entry: e, isOwner: false })),
+    ];
+    listEl.innerHTML = all.map(item => `
+      <div class="admin-id-row">
+        <span class="admin-id-crown">${item.isOwner ? '👑' : '👤'}</span>
+        <span class="admin-id-val">${item.entry}</span>
+        ${item.isOwner
+          ? '<span class="admin-id-tag admin-id-tag--owner">власник</span>'
+          : `<button class="admin-id-remove" data-entry="${item.entry}" type="button" aria-label="Видалити">✕</button>`}
+      </div>`).join('');
 
-  listEl.querySelectorAll('.admin-id-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const current = getAdminList().filter(id => id !== ADMIN_ID);
-      saveAdminList(current.filter(id => id !== btn.dataset.id));
-      renderAdminsList();
+    listEl.querySelectorAll('.admin-id-remove').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await fetch(`${API_BASE}/admins/remove?key=${STATS_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entry: btn.dataset.entry }),
+        });
+        renderAdminsList();
+      });
     });
-  });
+  } catch {
+    listEl.innerHTML = '<p class="admin-list-empty">Помилка завантаження</p>';
+  }
 }
 
 function normalizeAdminEntry(raw) {
@@ -570,14 +566,15 @@ function normalizeAdminEntry(raw) {
   return null;
 }
 
-document.querySelector('#addAdminBtn')?.addEventListener('click', () => {
+document.querySelector('#addAdminBtn')?.addEventListener('click', async () => {
   const input = document.querySelector('#cfgNewAdmin');
   const entry = normalizeAdminEntry(input?.value || '');
   if (!entry) return;
-  const current = getAdminList();
-  if (!current.includes(entry)) {
-    saveAdminList([...current.filter(id => id !== ADMIN_ID), entry]);
-  }
+  await fetch(`${API_BASE}/admins?key=${STATS_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entry }),
+  });
   if (input) input.value = '';
   renderAdminsList();
 });
@@ -587,16 +584,15 @@ document.querySelector('#cfgNewAdmin')?.addEventListener('keydown', e => {
 });
 
 /* ─── Admin: check access (Telegram WebApp only) ─── */
-function checkAdminAccess() {
+async function checkAdminAccess() {
   try {
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     if (!tgUser) return;
-    const adminList = getAdminList();
-    const byId       = adminList.includes(String(tgUser.id));
-    const byUsername = tgUser.username
-      ? adminList.includes('@' + tgUser.username.toLowerCase())
-      : false;
-    if (byId || byUsername) unlockAdmin();
+    const params = new URLSearchParams({ id: String(tgUser.id) });
+    if (tgUser.username) params.set('username', tgUser.username.toLowerCase());
+    const res  = await fetch(`${API_BASE}/check-admin?${params}`);
+    const data = await res.json();
+    if (data.admin) unlockAdmin();
   } catch (e) {}
 }
 
