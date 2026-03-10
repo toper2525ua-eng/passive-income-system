@@ -27,4 +27,4 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: chown -R nginx:nginx /var/www/passiveincomesystem && chmod -R 755 /var/www/passiveincomesystem
+          script: chown -R nginx:nginx /var/www/passiveincomesystem && chmod -R 755 /var/www/passiveincomesystem && restorecon -Rv /var/www/passiveincomesystem
