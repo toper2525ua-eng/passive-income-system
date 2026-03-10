@@ -478,8 +478,8 @@ button, input { font: inherit; }
   display: flex; gap: 8px; align-items: center;
   margin-bottom: 12px;
 }
-.admin-add-row .config-input { flex: 1; margin: 0; }
-.admin-add-btn { flex-shrink: 0; white-space: nowrap; }
+.admin-add-row .config-input { flex: 1; min-width: 0; }
+.admin-add-btn { flex-shrink: 0; width: auto !important; padding: 0 18px; }
 
 .admins-list { display: grid; gap: 8px; }
 
