@@ -95,6 +95,26 @@ button, input { font: inherit; }
   background: var(--accent-soft);
   padding: 5px 10px; border-radius: 999px;
   white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+
+.online-dot {
+  display: inline-block;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(18, 123, 99, .5);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(18, 123, 99, 0);
+  }
 }
 
 /* ─── Main area ─── */
