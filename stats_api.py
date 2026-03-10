@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Passive Income System — Stats API
+Passive Income System — Stats API + Telegram Bot
 Runs on 127.0.0.1:5050, proxied via nginx /api/
 """
 from flask import Flask, jsonify, request
@@ -8,6 +8,61 @@ from flask_cors import CORS
 from datetime import datetime, date
 import sqlite3
 import os
+import threading
+import time
+import requests as req
+
+BOT_TOKEN = "8424430883:AAH6hMh8qqrgN3sRe-1QOfYOJ0xDs4dKuLU"
+SITE_URL  = "https://passiveincomesystem.website"
+TG_API    = f"https://api.telegram.org/bot{BOT_TOKEN}"
+
+
+def tg_send(chat_id, text, reply_markup=None):
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    try:
+        req.post(f"{TG_API}/sendMessage", json=payload, timeout=10)
+    except Exception:
+        pass
+
+
+def handle_start(chat_id, first_name):
+    name = first_name or "друже"
+    text = (
+        f"👋 Привіт, {name}!\n\n"
+        "Тут зібрана система пасивного доходу — торгові боти, "
+        "інструкції, закритий канал.\n\n"
+        "Натисни кнопку нижче, щоб відкрити систему 👇"
+    )
+    markup = {
+        "inline_keyboard": [[
+            {"text": "🚀 Відкрити систему", "web_app": {"url": SITE_URL}}
+        ]]
+    }
+    tg_send(chat_id, text, markup)
+
+
+def poll_bot():
+    offset = 0
+    while True:
+        try:
+            resp = req.get(
+                f"{TG_API}/getUpdates",
+                params={"offset": offset, "timeout": 30},
+                timeout=35,
+            )
+            updates = resp.json().get("result", [])
+            for u in updates:
+                offset = u["update_id"] + 1
+                msg     = u.get("message", {})
+                text    = msg.get("text", "")
+                chat_id = msg.get("chat", {}).get("id")
+                first   = msg.get("from", {}).get("first_name", "")
+                if text.startswith("/start") and chat_id:
+                    handle_start(chat_id, first)
+        except Exception:
+            time.sleep(5)
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -97,4 +152,5 @@ def stats():
 
 if __name__ == "__main__":
     init_db()
+    threading.Thread(target=poll_bot, daemon=True).start()
     app.run(host="127.0.0.1", port=5050, debug=False)
