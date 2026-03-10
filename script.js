@@ -563,18 +563,23 @@ function renderAdminsList() {
   });
 }
 
+function normalizeAdminEntry(raw) {
+  const s = raw.trim();
+  if (/^\d+$/.test(s)) return s;                          // numeric ID
+  if (/^@?[a-zA-Z0-9_]{3,}$/.test(s)) return '@' + s.replace(/^@/, '').toLowerCase();
+  return null;
+}
+
 document.querySelector('#addAdminBtn')?.addEventListener('click', () => {
   const input = document.querySelector('#cfgNewAdmin');
-  const newId = input?.value.trim().replace(/\D/g, '');
-  if (!newId) return;
+  const entry = normalizeAdminEntry(input?.value || '');
+  if (!entry) return;
   const current = getAdminList();
-  if (!current.includes(newId)) {
-    saveAdminList([...current.filter(id => id !== ADMIN_ID), newId]);
+  if (!current.includes(entry)) {
+    saveAdminList([...current.filter(id => id !== ADMIN_ID), entry]);
   }
   if (input) input.value = '';
   renderAdminsList();
-  const msg = document.querySelector('#adminsMsg');
-  // No separate msg element — reuse renderAdminsList feedback
 });
 
 document.querySelector('#cfgNewAdmin')?.addEventListener('keydown', e => {
@@ -585,9 +590,13 @@ document.querySelector('#cfgNewAdmin')?.addEventListener('keydown', e => {
 function checkAdminAccess() {
   try {
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    if (tgUser && getAdminList().includes(String(tgUser.id))) {
-      unlockAdmin();
-    }
+    if (!tgUser) return;
+    const adminList = getAdminList();
+    const byId       = adminList.includes(String(tgUser.id));
+    const byUsername = tgUser.username
+      ? adminList.includes('@' + tgUser.username.toLowerCase())
+      : false;
+    if (byId || byUsername) unlockAdmin();
   } catch (e) {}
 }
 
