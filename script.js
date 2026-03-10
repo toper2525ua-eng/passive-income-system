@@ -394,7 +394,6 @@ function renderScreen(id) {
   const paragraphs = (screen.paragraphs || []).map(t => `<p>${t}</p>`).join("");
 
   screenContentEl.innerHTML = `
-    <span class="screen-tag">${screen.step}</span>
     <h3 class="screen-title">${screen.title}</h3>
     <div class="screen-body">
       ${paragraphs}
@@ -417,7 +416,6 @@ function renderScreen(id) {
 function renderFaqTab() {
   const s = appConfig.screens.faq;
   faqContentEl.innerHTML = `
-    <span class="screen-tag">${s.step}</span>
     <h3 class="screen-title">${s.title}</h3>
     <div class="screen-body">
       ${(s.paragraphs || []).map(t => `<p>${t}</p>`).join("")}
@@ -430,7 +428,6 @@ function renderFaqTab() {
 function renderAccessTab() {
   const s = appConfig.screens.payment;
   accessContentEl.innerHTML = `
-    <span class="screen-tag">${s.step}</span>
     <h3 class="screen-title">${s.title}</h3>
     <div class="screen-body">
       ${(s.paragraphs || []).map(t => `<p>${t}</p>`).join("")}
