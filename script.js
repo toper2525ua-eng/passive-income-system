@@ -214,7 +214,7 @@ const appConfig = {
       ],
     },
     payment: {
-      menuLabel: "Отримати доступ",
+      menuLabel: "Доступ",
       step: "Екран 8",
       title: "Доступ до системи — 100$ одноразово.",
       paragraphs: [
@@ -264,207 +264,138 @@ const appConfig = {
   },
 };
 
-const quickActions = document.querySelector("#quickActions");
-const screenContent = document.querySelector("#screenContent");
-const progressText = document.querySelector("#progressText");
-const progressFill = document.querySelector("#progressFill");
-const prevButton = document.querySelector("#prevButton");
-const nextButton = document.querySelector("#nextButton");
+/* ─── DOM refs ─── */
+const quickActionsEl  = document.querySelector("#quickActions");
+const screenContentEl = document.querySelector("#screenContent");
+const progressTextEl  = document.querySelector("#progressText");
+const progressFillEl  = document.querySelector("#progressFill");
+const prevButtonEl    = document.querySelector("#prevButton");
+const nextButtonEl    = document.querySelector("#nextButton");
+const faqContentEl    = document.querySelector("#faqContent");
+const accessContentEl = document.querySelector("#accessContent");
 
 let currentScreenId = "home";
 
-function getScreen(id) {
-  return appConfig.screens[id];
-}
+/* ─── Helpers ─── */
+function getScreen(id) { return appConfig.screens[id]; }
+function getIndex(id)  { return appConfig.order.indexOf(id); }
+function getNextId(id) { return appConfig.order[getIndex(id) + 1] || null; }
+function getPrevId(id) { return appConfig.order[getIndex(id) - 1] || null; }
 
-function getIndex(id) {
-  return appConfig.order.indexOf(id);
-}
-
-function getNextId(id) {
-  const currentIndex = getIndex(id);
-  return appConfig.order[currentIndex + 1] || null;
-}
-
-function getPrevId(id) {
-  const currentIndex = getIndex(id);
-  return appConfig.order[currentIndex - 1] || null;
-}
-
+/* ─── Builders ─── */
 function createActionMarkup(action) {
   if (action.type === "screen") {
-    return `<button class="button ${action.primary ? "button--primary" : "button--ghost"} button--small" type="button" data-screen-target="${action.target}">${action.label}</button>`;
+    return `<button class="btn ${action.primary ? "btn--primary" : "btn--ghost"} btn--sm" type="button" data-screen-target="${action.target}">${action.label}</button>`;
   }
-
   const href = appConfig.links[action.linkKey] || "#";
   const disabled = href === "#";
-
-  return `<a class="button ${action.primary ? "button--primary" : "button--ghost"} button--small ${disabled ? "is-disabled" : ""}" href="${href}" data-link="${action.linkKey}" ${disabled ? 'aria-disabled="true"' : ""}>${action.label}</a>`;
-}
-
-function buildMetrics(metrics = []) {
-  if (!metrics.length) {
-    return "";
-  }
-
-  return `
-    <div class="screen-metrics">
-      ${metrics
-        .map(
-          (metric) => `
-            <div class="screen-metric">
-              <strong>${metric.value}</strong>
-              <span>${metric.label}</span>
-            </div>
-          `
-        )
-        .join("")}
-    </div>
-  `;
+  return `<a class="btn ${action.primary ? "btn--primary" : "btn--ghost"} btn--sm ${disabled ? "is-disabled" : ""}" href="${href}" data-link="${action.linkKey}" ${disabled ? 'aria-disabled="true"' : ""}>${action.label}</a>`;
 }
 
 function buildList(items = []) {
-  if (!items.length) {
-    return "";
-  }
-
-  return `<ul class="screen-list">${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+  if (!items.length) return "";
+  return `<ul class="screen-list">${items.map(i => `<li>${i}</li>`).join("")}</ul>`;
 }
 
 function buildMedia(media = []) {
-  if (!media.length) {
-    return "";
-  }
-
-  return `
-    <div class="screen-media-grid">
-      ${media
-        .map(
-          (item) => `
-            <article class="screen-media">
-              <span class="screen-media__label">${item.label}</span>
-              <h4>${item.title}</h4>
-              <p>${item.description}</p>
-            </article>
-          `
-        )
-        .join("")}
-    </div>
-  `;
+  if (!media.length) return "";
+  return `<div class="screen-media-grid">${media.map(m => `
+    <article class="screen-media">
+      <span class="screen-media__label">${m.label}</span>
+      <h4>${m.title}</h4>
+      <p>${m.description}</p>
+    </article>`).join("")}</div>`;
 }
 
 function buildFaq(faq = []) {
-  if (!faq.length) {
-    return "";
-  }
-
-  return `
-    <div class="faq-mini">
-      ${faq
-        .map(
-          (item) => `
-            <article class="faq-mini__item">
-              <h4>${item.question}</h4>
-              <p>${item.answer}</p>
-            </article>
-          `
-        )
-        .join("")}
-    </div>
-  `;
+  if (!faq.length) return "";
+  return `<div class="faq-mini">${faq.map(f => `
+    <article class="faq-mini__item">
+      <h4>${f.question}</h4>
+      <p>${f.answer}</p>
+    </article>`).join("")}</div>`;
 }
 
 function buildNote(note) {
-  if (!note) {
-    return "";
-  }
+  if (!note) return "";
+  return `<div class="screen-note ${note.accent ? "screen-note--accent" : ""}">
+    <strong>${note.title}</strong>
+    <p>${note.text}</p>
+  </div>`;
+}
 
-  return `
-    <div class="screen-note ${note.accent ? "screen-note--accent" : ""}">
-      <strong>${note.title}</strong>
-      <p>${note.text}</p>
-    </div>
-  `;
+function buildMetrics(metrics = []) {
+  if (!metrics.length) return "";
+  return `<div class="screen-metrics">${metrics.map(m => `
+    <div class="screen-metric">
+      <strong>${m.value}</strong><span>${m.label}</span>
+    </div>`).join("")}</div>`;
 }
 
 function buildActions(actions = []) {
-  if (!actions.length) {
-    return "";
-  }
-
-  return `
-    <div class="screen-inline-actions">
-      ${actions.map(createActionMarkup).join("")}
-    </div>
-  `;
+  if (!actions.length) return "";
+  return `<div class="screen-inline-actions">${actions.map(createActionMarkup).join("")}</div>`;
 }
 
+/* ─── Quick actions (pills) ─── */
 function renderQuickActions() {
-  quickActions.innerHTML = appConfig.mainButtons
-    .map((id) => {
-      const screen = getScreen(id);
-      return `<button type="button" data-key="${id}">${screen.menuLabel}</button>`;
-    })
-    .join("");
+  quickActionsEl.innerHTML = appConfig.mainButtons
+    .map(id => {
+      const s = getScreen(id);
+      return `<button type="button" data-key="${id}">${s.menuLabel}</button>`;
+    }).join("");
 }
 
 function setActiveQuickButton(id) {
-  quickActions.querySelectorAll("button").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.key === id);
+  quickActionsEl.querySelectorAll("button").forEach(btn => {
+    btn.classList.toggle("is-active", btn.dataset.key === id);
   });
 }
 
+/* ─── Progress ─── */
 function updateProgress(id) {
-  const currentIndex = getIndex(id);
+  const idx   = getIndex(id);
   const total = appConfig.order.length;
-  progressText.textContent = `Екран ${currentIndex + 1} з ${total}`;
-  progressFill.style.width = `${((currentIndex + 1) / total) * 100}%`;
+  progressTextEl.textContent = `Екран ${idx + 1} з ${total}`;
+  progressFillEl.style.width = `${((idx + 1) / total) * 100}%`;
 }
 
+/* ─── Footer nav buttons ─── */
 function updateFooterButtons(id) {
   const prevId = getPrevId(id);
   const nextId = getNextId(id);
 
-  prevButton.disabled = !prevId;
-  prevButton.dataset.target = prevId || "";
+  prevButtonEl.disabled = !prevId;
+  prevButtonEl.dataset.target = prevId || "";
 
   if (!nextId) {
-    nextButton.disabled = true;
-    nextButton.dataset.target = "";
-    nextButton.textContent = "Готово";
+    nextButtonEl.disabled = true;
+    nextButtonEl.textContent = "Готово";
     return;
   }
-
   const nextScreen = getScreen(nextId);
-  nextButton.disabled = false;
-  nextButton.dataset.target = nextId;
-  nextButton.textContent = id === "payment" ? "Після оплати" : `Далі: ${nextScreen.menuLabel || nextScreen.step}`;
+  nextButtonEl.disabled = false;
+  nextButtonEl.dataset.target = nextId;
+  nextButtonEl.textContent = id === "payment"
+    ? "Після оплати"
+    : `Далі: ${nextScreen.menuLabel || nextScreen.step}`;
 }
 
+/* ─── Render bot screen ─── */
 function renderScreen(id) {
   const screen = getScreen(id);
-
-  if (!screen) {
-    return;
-  }
+  if (!screen) return;
 
   currentScreenId = id;
   setActiveQuickButton(appConfig.mainButtons.includes(id) ? id : "");
   updateProgress(id);
   updateFooterButtons(id);
 
-  const currentIndex = getIndex(id) + 1;
-  const paragraphs = screen.paragraphs.map((text) => `<p>${text}</p>`).join("");
+  const paragraphs = (screen.paragraphs || []).map(t => `<p>${t}</p>`).join("");
 
-  screenContent.innerHTML = `
-    <div class="screen-head">
-      <div>
-        <span class="screen-tag">${screen.step}</span>
-        <h3 class="screen-title">${screen.title}</h3>
-      </div>
-      <div class="screen-order">${String(currentIndex).padStart(2, "0")}</div>
-    </div>
-
+  screenContentEl.innerHTML = `
+    <span class="screen-tag">${screen.step}</span>
+    <h3 class="screen-title">${screen.title}</h3>
     <div class="screen-body">
       ${paragraphs}
       ${buildMetrics(screen.metrics)}
@@ -473,94 +404,105 @@ function renderScreen(id) {
       ${buildFaq(screen.faq)}
       ${buildNote(screen.note)}
       ${buildActions(screen.actions)}
-    </div>
-  `;
+    </div>`;
 
-  bindConfiguredLinks(screenContent);
+  bindConfiguredLinks(screenContentEl);
+
+  // Scroll content to top on screen change
+  const panel = document.querySelector("#panel-bot .panel-content");
+  if (panel) panel.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function bindConfiguredLinks(scope = document) {
-  scope.querySelectorAll("[data-link]").forEach((element) => {
-    const linkKey = element.getAttribute("data-link");
-    const href = appConfig.links[linkKey];
+/* ─── Render FAQ tab ─── */
+function renderFaqTab() {
+  const s = appConfig.screens.faq;
+  faqContentEl.innerHTML = `
+    <span class="screen-tag">${s.step}</span>
+    <h3 class="screen-title">${s.title}</h3>
+    <div class="screen-body">
+      ${(s.paragraphs || []).map(t => `<p>${t}</p>`).join("")}
+      ${buildFaq(s.faq)}
+    </div>`;
+  bindConfiguredLinks(faqContentEl);
+}
 
+/* ─── Render Access tab ─── */
+function renderAccessTab() {
+  const s = appConfig.screens.payment;
+  accessContentEl.innerHTML = `
+    <span class="screen-tag">${s.step}</span>
+    <h3 class="screen-title">${s.title}</h3>
+    <div class="screen-body">
+      ${(s.paragraphs || []).map(t => `<p>${t}</p>`).join("")}
+      ${buildList(s.bullets)}
+      ${buildNote(s.note)}
+    </div>`;
+  bindConfiguredLinks(accessContentEl);
+}
+
+/* ─── Links resolver ─── */
+function bindConfiguredLinks(scope = document) {
+  scope.querySelectorAll("[data-link]").forEach(el => {
+    const href = appConfig.links[el.getAttribute("data-link")];
     if (href) {
-      element.setAttribute("href", href);
-      element.setAttribute("target", "_blank");
-      element.setAttribute("rel", "noreferrer noopener");
-      element.classList.remove("is-disabled");
-      element.removeAttribute("aria-disabled");
+      el.setAttribute("href", href);
+      el.setAttribute("target", "_blank");
+      el.setAttribute("rel", "noreferrer noopener");
+      el.classList.remove("is-disabled");
+      el.removeAttribute("aria-disabled");
     } else {
-      element.setAttribute("href", "#");
-      element.classList.add("is-disabled");
-      element.setAttribute("aria-disabled", "true");
-      element.removeAttribute("target");
-      element.removeAttribute("rel");
+      el.setAttribute("href", "#");
+      el.classList.add("is-disabled");
+      el.setAttribute("aria-disabled", "true");
+      el.removeAttribute("target");
     }
   });
 }
 
-function setupObservers() {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.16 }
-  );
-
-  document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
+/* ─── Tab switching ─── */
+function switchTab(tabId) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("is-active"));
+  document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
+  document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
+  document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
 }
 
-quickActions?.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-key]");
-
-  if (!button) {
-    return;
-  }
-
-  renderScreen(button.dataset.key);
+/* ─── Event listeners ─── */
+document.querySelector(".bottom-nav")?.addEventListener("click", e => {
+  const btn = e.target.closest(".nav-item[data-tab]");
+  if (btn) switchTab(btn.dataset.tab);
 });
 
-screenContent?.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-screen-target]");
-
-  if (!button) {
-    return;
-  }
-
-  renderScreen(button.dataset.screenTarget);
+quickActionsEl?.addEventListener("click", e => {
+  const btn = e.target.closest("button[data-key]");
+  if (btn) renderScreen(btn.dataset.key);
 });
 
-prevButton?.addEventListener("click", () => {
-  const target = prevButton.dataset.target;
-
-  if (target) {
-    renderScreen(target);
-  }
+screenContentEl?.addEventListener("click", e => {
+  const btn = e.target.closest("[data-screen-target]");
+  if (btn) renderScreen(btn.dataset.screenTarget);
 });
 
-nextButton?.addEventListener("click", () => {
-  const target = nextButton.dataset.target;
-
-  if (target) {
-    renderScreen(target);
-  }
+faqContentEl?.addEventListener("click", e => {
+  const btn = e.target.closest("[data-screen-target]");
+  if (btn) { switchTab("bot"); renderScreen(btn.dataset.screenTarget); }
 });
 
-document.addEventListener("click", (event) => {
-  const disabledLink = event.target.closest("[aria-disabled='true']");
-
-  if (disabledLink) {
-    event.preventDefault();
-  }
+prevButtonEl?.addEventListener("click", () => {
+  if (prevButtonEl.dataset.target) renderScreen(prevButtonEl.dataset.target);
 });
 
+nextButtonEl?.addEventListener("click", () => {
+  if (nextButtonEl.dataset.target) renderScreen(nextButtonEl.dataset.target);
+});
+
+document.addEventListener("click", e => {
+  if (e.target.closest("[aria-disabled='true']")) e.preventDefault();
+});
+
+/* ─── Init ─── */
 bindConfiguredLinks();
 renderQuickActions();
 renderScreen(currentScreenId);
-setupObservers();
+renderFaqTab();
+renderAccessTab();
