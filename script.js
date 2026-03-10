@@ -521,40 +521,19 @@ function trackView(screen) {
   }).catch(() => {});
 }
 
-/* ─── Admin: check access ─── */
+/* ─── Admin: check access (Telegram WebApp only) ─── */
 function checkAdminAccess() {
-  // Via Telegram WebApp
   try {
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     if (tgUser && String(tgUser.id) === ADMIN_ID) {
       unlockAdmin();
-      return;
     }
   } catch (e) {}
-  // Via localStorage (unlocked by tap)
-  if (localStorage.getItem('pi_admin') === ADMIN_ID) {
-    unlockAdmin();
-  }
 }
 
 function unlockAdmin() {
-  localStorage.setItem('pi_admin', ADMIN_ID);
   if (adminNavBtn) adminNavBtn.style.display = '';
 }
-
-/* ─── Admin: secret tap on logo (7 taps) ─── */
-let tapCount = 0, tapTimer;
-document.querySelector('.brand__mark')?.addEventListener('click', () => {
-  tapCount++;
-  clearTimeout(tapTimer);
-  tapTimer = setTimeout(() => { tapCount = 0; }, 2000);
-  if (tapCount >= 7) {
-    tapCount = 0;
-    unlockAdmin();
-    switchTab('admin');
-    loadStats();
-  }
-});
 
 /* ─── Admin: load stats ─── */
 async function loadStats() {
@@ -636,5 +615,3 @@ renderAccessTab();
 trackView('home');
 checkAdminAccess();
 
-// Load config inputs if admin
-if (localStorage.getItem('pi_admin') === ADMIN_ID) loadConfig();
