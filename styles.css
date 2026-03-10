@@ -350,6 +350,114 @@ button, input { font: inherit; }
   stroke: var(--accent-dark);
 }
 
+/* ─── Admin panel ─── */
+.admin-section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+
+.admin-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.admin-section-title {
+  font-weight: 700; font-size: .95rem;
+}
+
+.admin-refresh {
+  background: var(--accent-soft);
+  border: 1px solid rgba(18,123,99,.18);
+  border-radius: 999px;
+  color: var(--accent-dark);
+  font-size: 1rem; font-weight: 700;
+  width: 34px; height: 34px;
+  cursor: pointer; display: grid; place-items: center;
+}
+
+.stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 14px;
+}
+
+.stat-card {
+  background: var(--accent-soft);
+  border: 1px solid rgba(18,123,99,.14);
+  border-radius: var(--r-md);
+  padding: 14px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+
+.stat-value {
+  font-size: 1.9rem; font-weight: 800;
+  color: var(--accent-dark); line-height: 1;
+}
+
+.stat-label {
+  font-size: .75rem; color: var(--muted); font-weight: 600;
+}
+
+.screen-stats { display: grid; gap: 8px; }
+
+.screen-stat-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .85rem;
+}
+
+.screen-stat-name {
+  flex: 0 0 130px; color: var(--text); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.screen-stat-bar-wrap {
+  flex: 1; height: 6px; border-radius: 999px;
+  background: rgba(23,33,27,.07); overflow: hidden;
+}
+
+.screen-stat-bar {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #67b892);
+  transition: width .4s ease;
+}
+
+.screen-stat-count {
+  flex: 0 0 28px; text-align: right;
+  color: var(--muted); font-size: .8rem;
+}
+
+/* Config form */
+.config-form { display: grid; gap: 12px; }
+
+.config-label {
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: .82rem; font-weight: 600; color: var(--muted);
+}
+
+.config-input {
+  height: 44px; padding: 0 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.8);
+  color: var(--text); font-size: .9rem;
+  outline: none; width: 100%;
+  transition: border-color .18s;
+}
+.config-input:focus { border-color: var(--accent); }
+
+.config-hint {
+  margin: 0; font-size: .82rem;
+  color: var(--accent-dark); font-weight: 600; min-height: 18px;
+}
+
+.admin-nav-item { color: var(--warm) !important; }
+.admin-nav-item svg { stroke: var(--warm) !important; }
+.admin-nav-item.is-active { color: var(--warm) !important; }
+.admin-nav-item.is-active svg { stroke: var(--warm) !important; }
+
 /* ─── Tap highlight ─── */
 .pills button,
 .btn,

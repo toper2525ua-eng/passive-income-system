@@ -264,6 +264,11 @@ const appConfig = {
   },
 };
 
+/* ─── Config ─── */
+const ADMIN_ID  = '6400309586';
+const STATS_KEY = 'pisystem_admin_2026';
+const API_BASE  = '/api';
+
 /* ─── DOM refs ─── */
 const quickActionsEl  = document.querySelector("#quickActions");
 const screenContentEl = document.querySelector("#screenContent");
@@ -273,6 +278,7 @@ const prevButtonEl    = document.querySelector("#prevButton");
 const nextButtonEl    = document.querySelector("#nextButton");
 const faqContentEl    = document.querySelector("#faqContent");
 const accessContentEl = document.querySelector("#accessContent");
+const adminNavBtn     = document.querySelector("#adminNavBtn");
 
 let currentScreenId = "home";
 
@@ -406,6 +412,7 @@ function renderScreen(id) {
     </div>`;
 
   bindConfiguredLinks(screenContentEl);
+  trackView(id);
 
   // Scroll content to top on screen change
   const panel = document.querySelector("#panel-bot .panel-content");
@@ -462,6 +469,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
+  if (tabId === 'admin') { loadStats(); loadConfig(); }
 }
 
 /* ─── Event listeners ─── */
@@ -497,9 +505,136 @@ document.addEventListener("click", e => {
   if (e.target.closest("[aria-disabled='true']")) e.preventDefault();
 });
 
+/* ─── Screen name map ─── */
+const screenNames = {
+  'home': 'Привіт (Старт)', 'what': 'Що це', 'how': 'Як це працює',
+  'inside': 'Що входить', 'results': 'Результати', 'risks': 'Ризики',
+  'faq': 'FAQ', 'payment': 'Доступ/Оплата', 'after-payment': 'Після оплати',
+};
+
+/* ─── Tracking ─── */
+function trackView(screen) {
+  fetch(`${API_BASE}/track`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ screen, event: 'view' }),
+  }).catch(() => {});
+}
+
+/* ─── Admin: check access ─── */
+function checkAdminAccess() {
+  // Via Telegram WebApp
+  try {
+    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    if (tgUser && String(tgUser.id) === ADMIN_ID) {
+      unlockAdmin();
+      return;
+    }
+  } catch (e) {}
+  // Via localStorage (unlocked by tap)
+  if (localStorage.getItem('pi_admin') === ADMIN_ID) {
+    unlockAdmin();
+  }
+}
+
+function unlockAdmin() {
+  localStorage.setItem('pi_admin', ADMIN_ID);
+  if (adminNavBtn) adminNavBtn.style.display = '';
+}
+
+/* ─── Admin: secret tap on logo (7 taps) ─── */
+let tapCount = 0, tapTimer;
+document.querySelector('.brand__mark')?.addEventListener('click', () => {
+  tapCount++;
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => { tapCount = 0; }, 2000);
+  if (tapCount >= 7) {
+    tapCount = 0;
+    unlockAdmin();
+    switchTab('admin');
+    loadStats();
+  }
+});
+
+/* ─── Admin: load stats ─── */
+async function loadStats() {
+  const statToday   = document.querySelector('#statToday');
+  const statTotal   = document.querySelector('#statTotal');
+  const screenStats = document.querySelector('#screenStats');
+
+  if (statToday) statToday.textContent = '…';
+  if (statTotal) statTotal.textContent = '…';
+
+  try {
+    const res  = await fetch(`${API_BASE}/stats?key=${STATS_KEY}`);
+    const data = await res.json();
+
+    if (statToday) statToday.textContent = data.today ?? '—';
+    if (statTotal) statTotal.textContent = data.total ?? '—';
+
+    if (screenStats && data.screens?.length) {
+      const max = data.screens[0].count || 1;
+      screenStats.innerHTML = data.screens.map(s => `
+        <div class="screen-stat-row">
+          <span class="screen-stat-name">${screenNames[s.screen] || s.screen}</span>
+          <div class="screen-stat-bar-wrap">
+            <div class="screen-stat-bar" style="width:${Math.round((s.count/max)*100)}%"></div>
+          </div>
+          <span class="screen-stat-count">${s.count}</span>
+        </div>`).join('');
+    } else if (screenStats) {
+      screenStats.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Даних ще немає</p>';
+    }
+  } catch (e) {
+    if (statToday) statToday.textContent = '—';
+    if (statTotal) statTotal.textContent = '—';
+    if (screenStats) screenStats.innerHTML = '<p style="color:var(--muted);font-size:.85rem">API недоступне</p>';
+  }
+}
+
+document.querySelector('#refreshStats')?.addEventListener('click', loadStats);
+
+/* ─── Admin: config form ─── */
+function loadConfig() {
+  const saved = JSON.parse(localStorage.getItem('pi_links') || '{}');
+  if (saved.telegram) document.querySelector('#cfgTelegram').value = saved.telegram;
+  if (saved.payment)  document.querySelector('#cfgPayment').value  = saved.payment;
+  if (saved.bybit)    document.querySelector('#cfgBybit').value    = saved.bybit;
+}
+
+function applyConfig(links) {
+  if (links.telegram) appConfig.links.telegram = links.telegram;
+  if (links.payment)  appConfig.links.payment  = links.payment;
+  if (links.bybit)    appConfig.links.bybit    = links.bybit;
+  bindConfiguredLinks();
+  renderFaqTab();
+  renderAccessTab();
+}
+
+document.querySelector('#saveConfig')?.addEventListener('click', () => {
+  const links = {
+    telegram: document.querySelector('#cfgTelegram').value.trim(),
+    payment:  document.querySelector('#cfgPayment').value.trim(),
+    bybit:    document.querySelector('#cfgBybit').value.trim(),
+  };
+  localStorage.setItem('pi_links', JSON.stringify(links));
+  applyConfig(links);
+  const msg = document.querySelector('#configMsg');
+  if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+});
+
 /* ─── Init ─── */
+// Apply saved config
+const savedLinks = JSON.parse(localStorage.getItem('pi_links') || '{}');
+if (Object.keys(savedLinks).length) applyConfig(savedLinks);
+
 bindConfiguredLinks();
 renderQuickActions();
 renderScreen(currentScreenId);
 renderFaqTab();
 renderAccessTab();
+trackView('home');
+checkAdminAccess();
+
+// Load config inputs if admin
+if (localStorage.getItem('pi_admin') === ADMIN_ID) loadConfig();
