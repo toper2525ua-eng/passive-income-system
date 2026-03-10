@@ -473,6 +473,56 @@ button, input { font: inherit; }
   color: var(--accent-dark); font-weight: 600; min-height: 18px;
 }
 
+/* ─── Admin management ─── */
+.admin-add-row {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 12px;
+}
+.admin-add-row .config-input { flex: 1; margin: 0; }
+.admin-add-btn { flex-shrink: 0; white-space: nowrap; }
+
+.admins-list { display: grid; gap: 8px; }
+
+.admin-id-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, .65);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+.admin-id-crown { font-size: 1rem; flex-shrink: 0; }
+
+.admin-id-val {
+  flex: 1; font-size: .88rem; font-weight: 600;
+  font-feature-settings: "tnum"; color: var(--text);
+}
+
+.admin-id-tag {
+  font-size: .72rem; font-weight: 700; padding: 3px 9px;
+  border-radius: 999px; flex-shrink: 0;
+}
+.admin-id-tag--owner {
+  background: var(--warm-soft); color: var(--warm);
+}
+
+.admin-id-remove {
+  flex-shrink: 0; width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: rgba(200, 40, 40, .08);
+  border: 1px solid rgba(200, 40, 40, .18);
+  border-radius: 999px; cursor: pointer;
+  color: #c82828; font-size: .85rem; font-weight: 700;
+  transition: background .18s;
+  -webkit-tap-highlight-color: transparent;
+}
+.admin-id-remove:active { background: rgba(200, 40, 40, .18); }
+
+.admin-list-empty {
+  font-size: .82rem; color: var(--muted);
+  text-align: center; padding: 8px 0;
+}
+
 .admin-nav-item { color: var(--warm) !important; }
 .admin-nav-item svg { stroke: var(--warm) !important; }
 .admin-nav-item.is-active { color: var(--warm) !important; }

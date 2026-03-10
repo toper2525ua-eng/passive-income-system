@@ -469,7 +469,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadStats(); loadConfig(); }
+  if (tabId === 'admin') { loadStats(); loadConfig(); renderAdminsList(); }
 }
 
 /* ─── Event listeners ─── */
@@ -521,11 +521,71 @@ function trackView(screen) {
   }).catch(() => {});
 }
 
+/* ─── Admin list helpers ─── */
+const ADMINS_KEY = 'pi_admins';
+
+function getAdminList() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(ADMINS_KEY) || '[]');
+    return Array.from(new Set([ADMIN_ID, ...stored]));
+  } catch { return [ADMIN_ID]; }
+}
+
+function saveAdminList(list) {
+  // Never store the hardcoded owner — it's always added in getAdminList()
+  const filtered = list.filter(id => id !== ADMIN_ID);
+  localStorage.setItem(ADMINS_KEY, JSON.stringify(filtered));
+}
+
+function renderAdminsList() {
+  const listEl = document.querySelector('#adminsList');
+  if (!listEl) return;
+  const list = getAdminList();
+  if (!list.length) {
+    listEl.innerHTML = '<p class="admin-list-empty">Немає адмінів</p>';
+    return;
+  }
+  listEl.innerHTML = list.map(id => `
+    <div class="admin-id-row">
+      <span class="admin-id-crown">${id === ADMIN_ID ? '👑' : '👤'}</span>
+      <span class="admin-id-val">${id}</span>
+      ${id === ADMIN_ID
+        ? '<span class="admin-id-tag admin-id-tag--owner">власник</span>'
+        : `<button class="admin-id-remove" data-id="${id}" type="button" aria-label="Видалити">✕</button>`}
+    </div>`).join('');
+
+  listEl.querySelectorAll('.admin-id-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const current = getAdminList().filter(id => id !== ADMIN_ID);
+      saveAdminList(current.filter(id => id !== btn.dataset.id));
+      renderAdminsList();
+    });
+  });
+}
+
+document.querySelector('#addAdminBtn')?.addEventListener('click', () => {
+  const input = document.querySelector('#cfgNewAdmin');
+  const newId = input?.value.trim().replace(/\D/g, '');
+  if (!newId) return;
+  const current = getAdminList();
+  if (!current.includes(newId)) {
+    saveAdminList([...current.filter(id => id !== ADMIN_ID), newId]);
+  }
+  if (input) input.value = '';
+  renderAdminsList();
+  const msg = document.querySelector('#adminsMsg');
+  // No separate msg element — reuse renderAdminsList feedback
+});
+
+document.querySelector('#cfgNewAdmin')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.querySelector('#addAdminBtn')?.click();
+});
+
 /* ─── Admin: check access (Telegram WebApp only) ─── */
 function checkAdminAccess() {
   try {
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    if (tgUser && String(tgUser.id) === ADMIN_ID) {
+    if (tgUser && getAdminList().includes(String(tgUser.id))) {
       unlockAdmin();
     }
   } catch (e) {}
