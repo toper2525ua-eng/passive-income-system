@@ -268,7 +268,12 @@ const appConfig = {
 const ADMIN_ID        = '6400309586';
 const STATS_KEY       = 'pisystem_admin_2026';
 const API_BASE        = '/api';
-const SCREENSHOTS_KEY = 'pi_screenshots';
+const SHOT_KEYS = {
+  results: 'pi_shots_results',
+  reviews: 'pi_shots_reviews',
+  process: 'pi_shots_process',
+};
+let adminActiveType = 'results';
 
 /* ─── DOM refs ─── */
 const quickActionsEl  = document.querySelector("#quickActions");
@@ -775,28 +780,23 @@ document.querySelector('#saveConfig')?.addEventListener('click', () => {
   if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
 });
 
-/* ─── Screenshots storage ─── */
-function migrateScreenshots() {
-  // Migrate from old 3-type keys into single key
-  const oldKeys = ['pi_shots_results', 'pi_shots_reviews', 'pi_shots_process'];
-  const current = JSON.parse(localStorage.getItem(SCREENSHOTS_KEY) || '[]');
-  let migrated = [...current];
-  let changed = false;
-  oldKeys.forEach(k => {
-    try {
-      const old = JSON.parse(localStorage.getItem(k) || '[]');
-      if (old.length) { migrated = migrated.concat(old); localStorage.removeItem(k); changed = true; }
-    } catch {}
-  });
-  if (changed) localStorage.setItem(SCREENSHOTS_KEY, JSON.stringify(migrated));
-}
-
-function getScreenshots() {
-  try { return JSON.parse(localStorage.getItem(SCREENSHOTS_KEY) || '[]'); }
+/* ─── Screenshots storage (3 types, combined display) ─── */
+function getShotsByType(type) {
+  try { return JSON.parse(localStorage.getItem(SHOT_KEYS[type]) || '[]'); }
   catch { return []; }
 }
-function saveScreenshots(list) {
-  localStorage.setItem(SCREENSHOTS_KEY, JSON.stringify(list));
+function saveShotsByType(type, list) {
+  localStorage.setItem(SHOT_KEYS[type], JSON.stringify(list));
+}
+// Returns ALL photos merged (for carousel display on results screen)
+function getScreenshots() {
+  return [
+    ...getShotsByType('results'),
+    ...getShotsByType('reviews'),
+    ...getShotsByType('process'),
+    // also pick up any old single-key photos
+    ...((() => { try { return JSON.parse(localStorage.getItem('pi_screenshots') || '[]'); } catch { return []; } })()),
+  ];
 }
 
 function resizeImageToDataURL(file, maxWidth = 900, quality = 0.78) {
@@ -817,13 +817,14 @@ function resizeImageToDataURL(file, maxWidth = 900, quality = 0.78) {
   });
 }
 
-/* ─── Admin: render screenshots list ─── */
+/* ─── Admin: render screenshots list for active type ─── */
 function renderAdminScreenshots() {
   const container = document.querySelector('#adminScreenshots');
   if (!container) return;
-  const list = getScreenshots();
+  const list = getShotsByType(adminActiveType);
+  const labels = { results: 'Результати', reviews: 'Відгуки', process: 'Процес' };
   if (!list.length) {
-    container.innerHTML = '<p class="admin-list-empty">Скріншотів ще немає. Додай перше фото 👆</p>';
+    container.innerHTML = `<p class="admin-list-empty">У «${labels[adminActiveType]}» ще немає фото 👆</p>`;
     return;
   }
   container.innerHTML = `<div class="admin-screenshots-grid">${list.map(s => `
@@ -838,13 +839,22 @@ function renderAdminScreenshots() {
   container.querySelectorAll('.admin-screenshot-remove').forEach(btn => {
     btn.addEventListener('click', () => {
       const id      = Number(btn.dataset.id);
-      const updated = getScreenshots().filter(s => s.id !== id);
-      saveScreenshots(updated);
+      const updated = getShotsByType(adminActiveType).filter(s => s.id !== id);
+      saveShotsByType(adminActiveType, updated);
       renderAdminScreenshots();
       if (currentScreenId === 'results') renderScreen('results');
     });
   });
 }
+
+/* ─── Admin: tab switching ─── */
+document.querySelector('#shotTypeTabs')?.addEventListener('click', e => {
+  const tab = e.target.closest('.shot-type-tab[data-shot-type]');
+  if (!tab) return;
+  adminActiveType = tab.dataset.shotType;
+  document.querySelectorAll('.shot-type-tab').forEach(t => t.classList.toggle('is-active', t === tab));
+  renderAdminScreenshots();
+});
 
 document.querySelector('#screenshotAddBtn')?.addEventListener('click', () => {
   document.querySelector('#screenshotFileInput')?.click();
@@ -858,10 +868,10 @@ document.querySelector('#screenshotFileInput')?.addEventListener('change', async
   try {
     const src     = await resizeImageToDataURL(file);
     const label   = document.querySelector('#screenshotLabel')?.value.trim();
-    const list    = getScreenshots();
+    const list    = getShotsByType(adminActiveType);
     const idx     = list.length + 1;
     list.push({ id: Date.now(), src, label: label || `Скрін ${idx}` });
-    saveScreenshots(list);
+    saveShotsByType(adminActiveType, list);
     const labelEl = document.querySelector('#screenshotLabel');
     if (labelEl) labelEl.value = '';
     e.target.value = '';
@@ -905,7 +915,6 @@ document.addEventListener('keydown', e => {
 });
 
 /* ─── Init ─── */
-migrateScreenshots(); // merge old pi_shots_* keys into pi_screenshots
 const savedLinks = JSON.parse(localStorage.getItem('pi_links') || '{}');
 if (Object.keys(savedLinks).length) applyConfig(savedLinks);
 
