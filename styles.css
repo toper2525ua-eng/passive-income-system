@@ -491,6 +491,19 @@ button, input { font: inherit; }
   margin: 0; font-size: .82rem;
   color: var(--accent-dark); font-weight: 600; min-height: 18px;
 }
+.config-hint--lock {
+  color: #b45309; font-size: .78rem; font-weight: 600;
+  background: rgba(180,83,9,.07); border-radius: 6px;
+  padding: 5px 8px; margin-top: -4px;
+}
+.config-hint--lock code {
+  font-family: monospace; font-size: .78rem;
+  background: rgba(180,83,9,.12); padding: 1px 4px; border-radius: 3px;
+}
+.config-input--locked {
+  opacity: .65; cursor: not-allowed;
+  background: rgba(0,0,0,.04);
+}
 
 /* ─── Admin management ─── */
 .admin-add-row {

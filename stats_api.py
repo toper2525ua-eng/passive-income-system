@@ -46,6 +46,25 @@ def handle_start(chat_id, first_name):
     tg_send(chat_id, text, markup)
 
 
+def handle_setwallet(chat_id, text):
+    if str(chat_id) != OWNER_ID:
+        tg_send(chat_id, "⛔ Тільки власник може змінювати гаманець.")
+        return
+    parts = text.strip().split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        current = get_cfg("ton_wallet") or "не встановлено"
+        tg_send(chat_id,
+            f"💳 Поточний гаманець:\n<code>{current}</code>\n\n"
+            "Щоб змінити, надішли:\n<code>/setwallet UQA...</code>"
+        )
+        return
+    new_wallet = parts[1].strip()
+    set_cfg("ton_wallet", new_wallet)
+    tg_send(chat_id,
+        f"✅ TON гаманець оновлено:\n<code>{new_wallet}</code>"
+    )
+
+
 def poll_bot():
     offset = 0
     while True:
@@ -64,6 +83,8 @@ def poll_bot():
                 first   = msg.get("from", {}).get("first_name", "")
                 if text.startswith("/start") and chat_id:
                     handle_start(chat_id, first)
+                elif text.startswith("/setwallet") and chat_id:
+                    handle_setwallet(chat_id, text)
         except Exception:
             time.sleep(5)
 
@@ -399,12 +420,11 @@ def set_ton_config():
     if request.args.get("key") != ADMIN_KEY:
         return jsonify({"error": "unauthorized"}), 401
     data = request.get_json(silent=True) or {}
-    if "wallet" in data:
-        set_cfg("ton_wallet",       data["wallet"].strip())
+    # Wallet can ONLY be set via Telegram bot command /setwallet — never via web
     if "price" in data:
-        set_cfg("ton_price",        str(data["price"]).strip())
+        set_cfg("ton_price",       str(data["price"]).strip())
     if "access_link" in data:
-        set_cfg("ton_access_link",  data["access_link"].strip())
+        set_cfg("ton_access_link", data["access_link"].strip())
     return jsonify({"ok": True})
 
 

@@ -1107,10 +1107,24 @@ async function loadTonConfig() {
   try {
     const res  = await fetch(`${API_BASE}/config/ton?key=${STATS_KEY}`);
     const data = await res.json();
-    const w = document.querySelector('#cfgTonWallet');
-    const p = document.querySelector('#cfgTonPrice');
-    const a = document.querySelector('#cfgTonAccessLink');
-    if (w && data.wallet)      w.value = data.wallet;
+    const w    = document.querySelector('#cfgTonWallet');
+    const hint = document.querySelector('#tonWalletHint');
+    const p    = document.querySelector('#cfgTonPrice');
+    const a    = document.querySelector('#cfgTonAccessLink');
+
+    if (w) {
+      if (data.wallet) {
+        // Wallet is set — show masked + lock the field
+        w.value    = data.wallet;
+        w.readOnly = true;
+        w.classList.add('config-input--locked');
+        if (hint) hint.style.display = '';
+      } else {
+        w.readOnly = false;
+        w.classList.remove('config-input--locked');
+        if (hint) hint.style.display = 'none';
+      }
+    }
     if (p && data.price)       p.value = data.price;
     if (a && data.access_link) a.value = data.access_link;
   } catch {}
