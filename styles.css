@@ -668,48 +668,56 @@ button, input { font: inherit; }
   text-align: center; line-height: 1.55;
 }
 
-/* ─── Screenshot banners (results screen) ─── */
+/* ─── Screenshot banners carousel (results screen) ─── */
 .screenshot-banners {
-  display: flex; flex-direction: column; gap: 12px;
-  margin: 8px 0 4px;
+  display: flex; flex-direction: row;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* bleed to card edges */
+  margin: 8px -16px 4px;
+  padding: 4px 16px 10px;
 }
+.screenshot-banners::-webkit-scrollbar { display: none; }
 
 .screenshot-banner {
   position: relative;
+  flex-shrink: 0;
+  width: 82%;
+  aspect-ratio: 16 / 9;
   border-radius: var(--r-md);
   overflow: hidden;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(23,33,27,.12);
-  transition: transform .18s ease, box-shadow .18s ease;
-  background: rgba(23,33,27,.04);
+  scroll-snap-align: start;
+  box-shadow: 0 4px 20px rgba(23,33,27,.15);
+  background: rgba(23,33,27,.07);
   -webkit-tap-highlight-color: transparent;
+  transition: transform .15s ease;
 }
-.screenshot-banner:active {
-  transform: scale(.98);
-  box-shadow: 0 2px 8px rgba(23,33,27,.1);
-}
+.screenshot-banner:active { transform: scale(.97); }
 
 .screenshot-banner img {
-  display: block; width: 100%; height: auto;
-  border-radius: var(--r-md);
+  display: block;
+  width: 100%; height: 100%;
   object-fit: cover;
 }
 
 .screenshot-banner__footer {
   position: absolute; bottom: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 12px 10px;
-  background: linear-gradient(to top, rgba(23,33,27,.72) 0%, transparent 100%);
-  border-radius: 0 0 var(--r-md) var(--r-md);
+  padding: 20px 12px 10px;
+  background: linear-gradient(to top, rgba(10,14,11,.75) 0%, transparent 100%);
 }
 
 .screenshot-banner__label {
-  font-size: .78rem; font-weight: 700;
-  color: rgba(255,255,255,.92); letter-spacing: .02em;
+  font-size: .76rem; font-weight: 700;
+  color: rgba(255,255,255,.93); letter-spacing: .02em;
 }
 
 .screenshot-banner__zoom {
-  font-size: .85rem; opacity: .75;
+  font-size: .82rem; opacity: .8;
 }
 
 /* ─── Lightbox ─── */
@@ -745,10 +753,12 @@ button, input { font: inherit; }
 
 .lightbox__img {
   display: block;
-  max-width: 96vw; max-height: 80dvh;
+  /* show at natural size, capped to viewport */
+  max-width: 98vw;
+  max-height: 84dvh;
   width: auto; height: auto;
-  border-radius: var(--r-md);
-  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
   object-fit: contain;
 }
 
