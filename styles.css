@@ -16,7 +16,7 @@
   --r-md: 18px;
   --r-sm: 12px;
   --header-h: 60px;
-  --nav-h: 64px;
+  --nav-h: 72px;
 }
 
 /* ─── Reset ─── */
@@ -341,33 +341,52 @@ button, input { font: inherit; }
 /* ─── Bottom navigation ─── */
 .bottom-nav {
   flex-shrink: 0;
-  height: var(--nav-h);
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex; align-items: stretch;
-  background: rgba(255, 251, 242, .95);
-  backdrop-filter: blur(16px);
-  border-top: 1px solid var(--line);
+  background: rgba(255, 251, 242, .97);
+  backdrop-filter: blur(20px);
+  border-top: 1.5px solid var(--line);
+  box-shadow: 0 -2px 12px rgba(23,33,27,.07);
 }
 
 .nav-item {
   flex: 1;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 3px;
+  align-items: center; justify-content: center; gap: 4px;
   background: none; border: none; cursor: pointer;
-  color: var(--muted); font-size: .7rem; font-weight: 600;
-  padding: 0;
-  transition: color .18s;
+  color: var(--muted); font-size: .72rem; font-weight: 600;
+  padding: 6px 4px 2px;
+  transition: color .2s;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.nav-item::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 44px; height: 30px;
+  border-radius: 15px;
+  background: transparent;
+  transition: background .2s;
 }
 .nav-item svg {
-  transition: stroke .18s;
+  transition: stroke .2s, transform .2s;
   stroke: var(--muted);
+  position: relative; z-index: 1;
+}
+.nav-item span {
+  position: relative; z-index: 1;
 }
 .nav-item.is-active {
   color: var(--accent-dark);
 }
+.nav-item.is-active::before {
+  background: var(--accent-soft);
+}
 .nav-item.is-active svg {
   stroke: var(--accent-dark);
+  transform: scale(1.1);
 }
 
 /* ─── Admin panel ─── */
@@ -527,6 +546,7 @@ button, input { font: inherit; }
 .admin-nav-item svg { stroke: var(--warm) !important; }
 .admin-nav-item.is-active { color: var(--warm) !important; }
 .admin-nav-item.is-active svg { stroke: var(--warm) !important; }
+.admin-nav-item.is-active::before { background: var(--warm-soft) !important; }
 
 /* ─── Tap highlight ─── */
 .pills button,
