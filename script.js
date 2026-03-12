@@ -268,12 +268,7 @@ const appConfig = {
 const ADMIN_ID        = '6400309586';
 const STATS_KEY       = 'pisystem_admin_2026';
 const API_BASE        = '/api';
-const SHOT_TYPES = {
-  results: { label: 'Результати', emoji: '📊', key: 'pi_shots_results' },
-  reviews: { label: 'Відгуки',   emoji: '💬', key: 'pi_shots_reviews' },
-  process: { label: 'Процес',    emoji: '📈', key: 'pi_shots_process' },
-};
-let adminActiveType = 'results';
+const SCREENSHOTS_KEY = 'pi_screenshots';
 
 /* ─── DOM refs ─── */
 const quickActionsEl  = document.querySelector("#quickActions");
@@ -309,53 +304,25 @@ function buildList(items = []) {
   return `<ul class="screen-list">${items.map(i => `<li>${i}</li>`).join("")}</ul>`;
 }
 
-function buildBanners(shots) {
-  return `<div class="screenshot-banners">${shots.map(s => `
-    <div class="screenshot-banner" data-lightbox-src="${s.src}" data-lightbox-caption="${s.label}">
-      <img src="${s.src}" alt="${s.label}" loading="lazy" />
-      <div class="screenshot-banner__footer">
-        <span class="screenshot-banner__label">${s.label}</span>
-        <span class="screenshot-banner__zoom">🔍</span>
-      </div>
-    </div>`).join('')}</div>`;
-}
-
-function buildPlaceholderCard(m) {
-  return `<article class="screen-media">
-    <span class="screen-media__label">${m.label}</span>
-    <h4>${m.title}</h4>
-    <p>${m.description}</p>
-  </article>`;
-}
-
 function buildMedia(media = []) {
-  const results = getShotsByType('results');
-  const reviews = getShotsByType('reviews');
-  const process = getShotsByType('process');
-  const hasAny  = results.length || reviews.length || process.length;
-
-  if (hasAny) {
-    let html = '';
-    if (results.length) {
-      html += `<div class="media-section-label">${SHOT_TYPES.results.emoji} ${SHOT_TYPES.results.label}</div>${buildBanners(results)}`;
-    } else if (media[0]) {
-      html += buildPlaceholderCard(media[0]);
-    }
-    if (reviews.length) {
-      html += `<div class="media-section-label">${SHOT_TYPES.reviews.emoji} ${SHOT_TYPES.reviews.label}</div>${buildBanners(reviews)}`;
-    } else if (media[1]) {
-      html += buildPlaceholderCard(media[1]);
-    }
-    if (process.length) {
-      html += `<div class="media-section-label">${SHOT_TYPES.process.emoji} ${SHOT_TYPES.process.label}</div>${buildBanners(process)}`;
-    } else if (media[2]) {
-      html += buildPlaceholderCard(media[2]);
-    }
-    return html;
+  const shots = getScreenshots();
+  if (shots.length) {
+    return `<div class="screenshot-banners">${shots.map(s => `
+      <div class="screenshot-banner" data-lightbox-src="${s.src}" data-lightbox-caption="${s.label}">
+        <img src="${s.src}" alt="${s.label}" loading="lazy" />
+        <div class="screenshot-banner__footer">
+          <span class="screenshot-banner__label">${s.label}</span>
+          <span class="screenshot-banner__zoom">🔍</span>
+        </div>
+      </div>`).join('')}</div>`;
   }
-
   if (!media.length) return "";
-  return `<div class="screen-media-grid">${media.map(m => buildPlaceholderCard(m)).join("")}</div>`;
+  return `<div class="screen-media-grid">${media.map(m => `
+    <article class="screen-media">
+      <span class="screen-media__label">${m.label}</span>
+      <h4>${m.title}</h4>
+      <p>${m.description}</p>
+    </article>`).join("")}</div>`;
 }
 
 function buildFaq(faq = []) {
@@ -808,13 +775,13 @@ document.querySelector('#saveConfig')?.addEventListener('click', () => {
   if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
 });
 
-/* ─── Screenshots storage (by type) ─── */
-function getShotsByType(type) {
-  try { return JSON.parse(localStorage.getItem(SHOT_TYPES[type].key) || '[]'); }
+/* ─── Screenshots storage ─── */
+function getScreenshots() {
+  try { return JSON.parse(localStorage.getItem(SCREENSHOTS_KEY) || '[]'); }
   catch { return []; }
 }
-function saveShotsByType(type, list) {
-  localStorage.setItem(SHOT_TYPES[type].key, JSON.stringify(list));
+function saveScreenshots(list) {
+  localStorage.setItem(SCREENSHOTS_KEY, JSON.stringify(list));
 }
 
 function resizeImageToDataURL(file, maxWidth = 900, quality = 0.78) {
@@ -839,10 +806,9 @@ function resizeImageToDataURL(file, maxWidth = 900, quality = 0.78) {
 function renderAdminScreenshots() {
   const container = document.querySelector('#adminScreenshots');
   if (!container) return;
-  const list = getShotsByType(adminActiveType);
-  const info = SHOT_TYPES[adminActiveType];
+  const list = getScreenshots();
   if (!list.length) {
-    container.innerHTML = `<p class="admin-list-empty">В розділі "${info.label}" поки немає фото 👆</p>`;
+    container.innerHTML = '<p class="admin-list-empty">Скріншотів ще немає. Додай перше фото 👆</p>';
     return;
   }
   container.innerHTML = `<div class="admin-screenshots-grid">${list.map(s => `
@@ -856,23 +822,14 @@ function renderAdminScreenshots() {
 
   container.querySelectorAll('.admin-screenshot-remove').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id   = Number(btn.dataset.id);
-      const updated = getShotsByType(adminActiveType).filter(s => s.id !== id);
-      saveShotsByType(adminActiveType, updated);
+      const id      = Number(btn.dataset.id);
+      const updated = getScreenshots().filter(s => s.id !== id);
+      saveScreenshots(updated);
       renderAdminScreenshots();
       if (currentScreenId === 'results') renderScreen('results');
     });
   });
 }
-
-/* ─── Admin: shot type tab switching ─── */
-document.querySelector('#shotTypeTabs')?.addEventListener('click', e => {
-  const tab = e.target.closest('.shot-type-tab[data-shot-type]');
-  if (!tab) return;
-  adminActiveType = tab.dataset.shotType;
-  document.querySelectorAll('.shot-type-tab').forEach(t => t.classList.toggle('is-active', t === tab));
-  renderAdminScreenshots();
-});
 
 document.querySelector('#screenshotAddBtn')?.addEventListener('click', () => {
   document.querySelector('#screenshotFileInput')?.click();
@@ -886,10 +843,10 @@ document.querySelector('#screenshotFileInput')?.addEventListener('change', async
   try {
     const src     = await resizeImageToDataURL(file);
     const label   = document.querySelector('#screenshotLabel')?.value.trim();
-    const list    = getShotsByType(adminActiveType);
+    const list    = getScreenshots();
     const idx     = list.length + 1;
     list.push({ id: Date.now(), src, label: label || `Скрін ${idx}` });
-    saveShotsByType(adminActiveType, list);
+    saveScreenshots(list);
     const labelEl = document.querySelector('#screenshotLabel');
     if (labelEl) labelEl.value = '';
     e.target.value = '';
