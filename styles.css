@@ -667,3 +667,158 @@ button, input { font: inherit; }
   margin: 0; font-size: .86rem; color: var(--muted);
   text-align: center; line-height: 1.55;
 }
+
+/* ─── Screenshot banners (results screen) ─── */
+.screenshot-banners {
+  display: flex; flex-direction: column; gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.screenshot-banner {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(23,33,27,.12);
+  transition: transform .18s ease, box-shadow .18s ease;
+  background: rgba(23,33,27,.04);
+  -webkit-tap-highlight-color: transparent;
+}
+.screenshot-banner:active {
+  transform: scale(.98);
+  box-shadow: 0 2px 8px rgba(23,33,27,.1);
+}
+
+.screenshot-banner img {
+  display: block; width: 100%; height: auto;
+  border-radius: var(--r-md);
+  object-fit: cover;
+}
+
+.screenshot-banner__footer {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px 10px;
+  background: linear-gradient(to top, rgba(23,33,27,.72) 0%, transparent 100%);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+}
+
+.screenshot-banner__label {
+  font-size: .78rem; font-weight: 700;
+  color: rgba(255,255,255,.92); letter-spacing: .02em;
+}
+
+.screenshot-banner__zoom {
+  font-size: .85rem; opacity: .75;
+}
+
+/* ─── Lightbox ─── */
+.lightbox {
+  position: fixed; inset: 0; z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+.lightbox:not([aria-hidden="true"]) {
+  pointer-events: all;
+  opacity: 1;
+}
+
+.lightbox__bd {
+  position: absolute; inset: 0;
+  background: rgba(10, 14, 11, .92);
+  backdrop-filter: blur(8px);
+}
+
+.lightbox__inner {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  max-width: 96vw; max-height: 92dvh;
+  gap: 10px;
+  transform: scale(.94);
+  transition: transform .22s ease;
+}
+.lightbox:not([aria-hidden="true"]) .lightbox__inner {
+  transform: scale(1);
+}
+
+.lightbox__img {
+  display: block;
+  max-width: 96vw; max-height: 80dvh;
+  width: auto; height: auto;
+  border-radius: var(--r-md);
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  object-fit: contain;
+}
+
+.lightbox__caption {
+  margin: 0;
+  font-size: .85rem; font-weight: 600;
+  color: rgba(255,255,255,.75);
+  text-align: center;
+  min-height: 1em;
+}
+
+.lightbox__close {
+  position: absolute; top: -46px; right: 0;
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 999px;
+  color: #fff; font-size: 1rem; font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .18s;
+}
+.lightbox__close:active { background: rgba(255,255,255,.3); }
+
+/* ─── Admin screenshots grid ─── */
+.screenshot-upload-row {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 4px;
+}
+
+.admin-screenshots-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-top: 10px;
+}
+
+.admin-screenshot-item {
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: rgba(255,255,255,.6);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(23,33,27,.07);
+}
+
+.admin-screenshot-item img {
+  display: block; width: 100%;
+  height: 110px; object-fit: cover;
+}
+
+.admin-screenshot-item__footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px;
+  gap: 4px;
+}
+
+.admin-screenshot-item__footer span {
+  font-size: .72rem; font-weight: 600;
+  color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1;
+}
+
+.admin-screenshot-remove {
+  flex-shrink: 0; width: 24px; height: 24px;
+  display: grid; place-items: center;
+  background: rgba(200,40,40,.08);
+  border: 1px solid rgba(200,40,40,.18);
+  border-radius: 999px; cursor: pointer;
+  color: #c82828; font-size: .75rem; font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .18s;
+}
+.admin-screenshot-remove:active { background: rgba(200,40,40,.2); }

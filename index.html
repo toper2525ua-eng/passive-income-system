@@ -145,6 +145,20 @@
               </div>
             </section>
 
+            <!-- Screenshots -->
+            <section class="admin-section">
+              <div class="admin-section-head">
+                <span class="admin-section-title">📸 Скріншоти результатів</span>
+              </div>
+              <div class="screenshot-upload-row">
+                <input class="config-input" id="screenshotLabel" type="text" placeholder="Підпис (необов'язково)" autocomplete="off" />
+                <button class="btn btn--primary btn--sm admin-add-btn" id="screenshotAddBtn" type="button">+ Фото</button>
+                <input id="screenshotFileInput" type="file" accept="image/*" style="display:none" />
+              </div>
+              <p class="config-hint" id="screenshotMsg"></p>
+              <div id="adminScreenshots"></div>
+            </section>
+
           </div>
         </div>
 
@@ -232,6 +246,16 @@
           <a class="btn btn--ghost btn--sm" id="cardTgBtn" href="#" target="_blank" rel="noreferrer noopener">✈️ Написати в Telegram</a>
         </div>
         <button class="pay-sheet__cancel" id="cardSheetCancel" type="button">← Назад</button>
+      </div>
+    </div>
+
+    <!-- ── Lightbox ── -->
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+      <div class="lightbox__bd" id="lightboxBd"></div>
+      <div class="lightbox__inner">
+        <button class="lightbox__close" id="lightboxClose" type="button" aria-label="Закрити">✕</button>
+        <img class="lightbox__img" id="lightboxImg" src="" alt="" />
+        <p class="lightbox__caption" id="lightboxCaption"></p>
       </div>
     </div>
 

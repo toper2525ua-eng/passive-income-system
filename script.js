@@ -265,9 +265,10 @@ const appConfig = {
 };
 
 /* ─── Config ─── */
-const ADMIN_ID  = '6400309586';
-const STATS_KEY = 'pisystem_admin_2026';
-const API_BASE  = '/api';
+const ADMIN_ID        = '6400309586';
+const STATS_KEY       = 'pisystem_admin_2026';
+const API_BASE        = '/api';
+const SCREENSHOTS_KEY = 'pi_screenshots';
 
 /* ─── DOM refs ─── */
 const quickActionsEl  = document.querySelector("#quickActions");
@@ -304,6 +305,17 @@ function buildList(items = []) {
 }
 
 function buildMedia(media = []) {
+  const shots = getScreenshots();
+  if (shots.length) {
+    return `<div class="screenshot-banners">${shots.map(s => `
+      <div class="screenshot-banner" data-lightbox-src="${s.src}" data-lightbox-caption="${s.label}">
+        <img src="${s.src}" alt="${s.label}" loading="lazy" />
+        <div class="screenshot-banner__footer">
+          <span class="screenshot-banner__label">${s.label}</span>
+          <span class="screenshot-banner__zoom">🔍</span>
+        </div>
+      </div>`).join('')}</div>`;
+  }
   if (!media.length) return "";
   return `<div class="screen-media-grid">${media.map(m => `
     <article class="screen-media">
@@ -469,7 +481,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadStats(); loadConfig(); renderAdminsList(); }
+  if (tabId === 'admin') { loadStats(); loadConfig(); renderAdminsList(); renderAdminScreenshots(); }
 }
 
 /* ─── Event listeners ─── */
@@ -761,6 +773,120 @@ document.querySelector('#saveConfig')?.addEventListener('click', () => {
   applyConfig(links);
   const msg = document.querySelector('#configMsg');
   if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+});
+
+/* ─── Screenshots storage ─── */
+function getScreenshots() {
+  try { return JSON.parse(localStorage.getItem(SCREENSHOTS_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveScreenshots(list) {
+  localStorage.setItem(SCREENSHOTS_KEY, JSON.stringify(list));
+}
+
+function resizeImageToDataURL(file, maxWidth = 900, quality = 0.78) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(); };
+    img.src = url;
+  });
+}
+
+/* ─── Admin: render screenshots list ─── */
+function renderAdminScreenshots() {
+  const container = document.querySelector('#adminScreenshots');
+  if (!container) return;
+  const list = getScreenshots();
+  if (!list.length) {
+    container.innerHTML = '<p class="admin-list-empty">Скріншотів ще немає. Додай перше фото 👆</p>';
+    return;
+  }
+  container.innerHTML = `<div class="admin-screenshots-grid">${list.map(s => `
+    <div class="admin-screenshot-item">
+      <img src="${s.src}" alt="${s.label}" loading="lazy" />
+      <div class="admin-screenshot-item__footer">
+        <span>${s.label}</span>
+        <button class="admin-screenshot-remove" data-id="${s.id}" type="button" aria-label="Видалити">✕</button>
+      </div>
+    </div>`).join('')}</div>`;
+
+  container.querySelectorAll('.admin-screenshot-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.id);
+      const list = getScreenshots().filter(s => s.id !== id);
+      saveScreenshots(list);
+      renderAdminScreenshots();
+      if (currentScreenId === 'results') renderScreen('results');
+    });
+  });
+}
+
+document.querySelector('#screenshotAddBtn')?.addEventListener('click', () => {
+  document.querySelector('#screenshotFileInput')?.click();
+});
+
+document.querySelector('#screenshotFileInput')?.addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const msgEl = document.querySelector('#screenshotMsg');
+  if (msgEl) msgEl.textContent = '⏳ Обробляємо…';
+  try {
+    const src   = await resizeImageToDataURL(file);
+    const label = document.querySelector('#screenshotLabel')?.value.trim();
+    const list  = getScreenshots();
+    const idx   = list.length + 1;
+    list.push({ id: Date.now(), src, label: label || `Скрін ${idx}` });
+    saveScreenshots(list);
+    const labelEl = document.querySelector('#screenshotLabel');
+    if (labelEl) labelEl.value = '';
+    e.target.value = '';
+    renderAdminScreenshots();
+    if (currentScreenId === 'results') renderScreen('results');
+    if (msgEl) { msgEl.textContent = '✓ Додано'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
+  } catch {
+    if (msgEl) { msgEl.textContent = '❌ Помилка. Спробуй ще'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
+  }
+});
+
+/* ─── Lightbox ─── */
+const lightboxEl = document.querySelector('#lightbox');
+
+function openLightbox(src, caption) {
+  const img = document.querySelector('#lightboxImg');
+  const cap = document.querySelector('#lightboxCaption');
+  if (img) img.src = src;
+  if (cap) cap.textContent = caption || '';
+  lightboxEl?.removeAttribute('aria-hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  lightboxEl?.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  const img = document.querySelector('#lightboxImg');
+  if (img) setTimeout(() => { img.src = ''; }, 250);
+}
+
+document.querySelector('#lightboxBd')?.addEventListener('click', closeLightbox);
+document.querySelector('#lightboxClose')?.addEventListener('click', closeLightbox);
+
+document.addEventListener('click', e => {
+  const banner = e.target.closest('[data-lightbox-src]');
+  if (banner) openLightbox(banner.dataset.lightboxSrc, banner.dataset.lightboxCaption);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLightbox();
 });
 
 /* ─── Init ─── */
