@@ -260,42 +260,6 @@ def track():
     return jsonify({"ok": True})
 
 
-@app.route("/api/stats", methods=["GET"])
-def stats():
-    if request.args.get("key") != ADMIN_KEY:
-        return jsonify({"error": "unauthorized"}), 401
-
-    conn  = get_db()
-    today = date.today().isoformat()
-
-    total = conn.execute(
-        "SELECT COUNT(*) AS c FROM visits WHERE event='view' AND screen='home'"
-    ).fetchone()["c"]
-
-    today_count = conn.execute(
-        "SELECT COUNT(*) AS c FROM visits WHERE ts LIKE ? AND event='view' AND screen='home'",
-        (f"{today}%",),
-    ).fetchone()["c"]
-
-    screens = conn.execute(
-        """
-        SELECT screen, COUNT(*) AS c
-        FROM visits
-        WHERE ts LIKE ? AND event = 'view'
-        GROUP BY screen
-        ORDER BY c DESC
-        LIMIT 10
-        """,
-        (f"{today}%",),
-    ).fetchall()
-
-    conn.close()
-    return jsonify({
-        "total":   total,
-        "today":   today_count,
-        "screens": [{"screen": r["screen"], "count": r["c"]} for r in screens],
-    })
-
 
 @app.route("/api/check-admin", methods=["GET"])
 def check_admin():

@@ -530,7 +530,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadStats(); loadConfig(); loadTonConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); }
+  if (tabId === 'admin') { loadConfig(); loadTonConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); }
 }
 
 /* ─── Event listeners ─── */
@@ -660,44 +660,6 @@ async function checkAdminAccess() {
 function unlockAdmin() {
   if (adminNavBtn) adminNavBtn.style.display = '';
 }
-
-/* ─── Admin: load stats ─── */
-async function loadStats() {
-  const statToday   = document.querySelector('#statToday');
-  const statTotal   = document.querySelector('#statTotal');
-  const screenStats = document.querySelector('#screenStats');
-
-  if (statToday) statToday.textContent = '…';
-  if (statTotal) statTotal.textContent = '…';
-
-  try {
-    const res  = await fetch(`${API_BASE}/stats?key=${STATS_KEY}`);
-    const data = await res.json();
-
-    if (statToday) statToday.textContent = data.today ?? '—';
-    if (statTotal) statTotal.textContent = data.total ?? '—';
-
-    if (screenStats && data.screens?.length) {
-      const max = data.screens[0].count || 1;
-      screenStats.innerHTML = data.screens.map(s => `
-        <div class="screen-stat-row">
-          <span class="screen-stat-name">${screenNames[s.screen] || s.screen}</span>
-          <div class="screen-stat-bar-wrap">
-            <div class="screen-stat-bar" style="width:${Math.round((s.count/max)*100)}%"></div>
-          </div>
-          <span class="screen-stat-count">${s.count}</span>
-        </div>`).join('');
-    } else if (screenStats) {
-      screenStats.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Даних ще немає</p>';
-    }
-  } catch (e) {
-    if (statToday) statToday.textContent = '—';
-    if (statTotal) statTotal.textContent = '—';
-    if (screenStats) screenStats.innerHTML = '<p style="color:var(--muted);font-size:.85rem">API недоступне</p>';
-  }
-}
-
-document.querySelector('#refreshStats')?.addEventListener('click', loadStats);
 
 /* ─── Payment sheet ─── */
 const paySheet  = document.querySelector('#paySheet');
