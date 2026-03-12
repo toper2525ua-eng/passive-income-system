@@ -774,6 +774,38 @@ button, input { font: inherit; }
 }
 .lightbox__close:active { background: rgba(255,255,255,.3); }
 
+/* ─── Shot type tabs ─── */
+.shot-type-tabs {
+  display: flex; gap: 6px;
+  margin-bottom: 12px;
+}
+
+.shot-type-tab {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--line);
+  background: rgba(255,255,255,.6);
+  color: var(--muted); font-size: .76rem; font-weight: 700;
+  cursor: pointer; text-align: center;
+  transition: all .18s ease;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.shot-type-tab:active { opacity: .7; }
+.shot-type-tab.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+/* ─── Media section labels (results screen) ─── */
+.media-section-label {
+  font-size: .76rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 6px 0 4px;
+}
+
 /* ─── Admin screenshots grid ─── */
 .screenshot-upload-row {
   display: flex; gap: 8px; align-items: center;
