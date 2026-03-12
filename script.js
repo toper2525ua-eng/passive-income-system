@@ -530,7 +530,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadStats(); loadConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); }
+  if (tabId === 'admin') { loadStats(); loadConfig(); loadTonConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); }
 }
 
 /* ─── Event listeners ─── */
@@ -745,11 +745,8 @@ document.querySelector('#paySheetBd')?.addEventListener('click', closePaySheet);
 document.querySelector('#paySheetCancel')?.addEventListener('click', closePaySheet);
 
 document.querySelector('#payOptCrypto')?.addEventListener('click', () => {
-  const hint = document.querySelector('#cryptoHint');
-  if (!hint) return;
-  const orig = hint.textContent;
-  hint.textContent = '🔜 Скоро буде доступно';
-  setTimeout(() => { hint.textContent = orig; }, 2500);
+  closePaySheet();
+  setTimeout(openTonSheet, 50);
 });
 
 document.querySelector('#payOptCard')?.addEventListener('click', () => {
@@ -928,6 +925,211 @@ document.querySelector('#screenshotFileInput')?.addEventListener('change', async
     if (msgEl) { msgEl.textContent = '✓ Збережено на сервері'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
   } catch {
     if (msgEl) { msgEl.textContent = '❌ Помилка. Спробуй ще'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
+  }
+});
+
+/* ─── TON Payment ─── */
+const tonSheetEl = document.querySelector('#tonSheet');
+let _tonOrder        = null;   // { order_id, wallet_address, amount_usdt, memo, expires_at, userId }
+let _tonTimerIv      = null;
+
+function openTonSheet() {
+  _resetTonUI();
+  tonSheetEl?.removeAttribute('aria-hidden');
+  document.body.style.overflow = 'hidden';
+  _loadTonOrder();
+}
+
+function closeTonSheet() {
+  tonSheetEl?.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  clearInterval(_tonTimerIv);
+}
+
+function _resetTonUI() {
+  const succ   = document.querySelector('#tonSuccess');
+  const verBtn = document.querySelector('#tonVerifyBtn');
+  const cards  = tonSheetEl?.querySelectorAll('.ton-card, .ton-instr, .ton-plan-row, .ton-progress');
+  if (succ)   succ.style.display = 'none';
+  if (verBtn) { verBtn.style.display = ''; verBtn.disabled = false; verBtn.textContent = '✓ Я надіслав оплату'; }
+  cards?.forEach(el => { el.style.display = ''; });
+  _setTonStatus('', '');
+}
+
+async function _loadTonOrder() {
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const userId = tgUser?.id ? String(tgUser.id) : null;
+  if (!userId) { _setTonStatus('Відкрий через Telegram', 'error'); return; }
+
+  // Check for pending order
+  try {
+    const res  = await fetch(`${API_BASE}/payment/pending?tg_user_id=${userId}`);
+    const data = await res.json();
+    if (data.order) { _showTonOrder(data.order, userId); return; }
+  } catch {}
+
+  // Create new order
+  _setTonStatus('⏳ Створюємо замовлення…', '');
+  try {
+    const res  = await fetch(`${API_BASE}/payment/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tg_user_id: userId }),
+    });
+    const data = await res.json();
+    if (data.error === 'payment_not_configured') {
+      _setTonStatus('❌ Оплата ще не налаштована адміном', 'error'); return;
+    }
+    if (data.error) { _setTonStatus('❌ ' + data.error, 'error'); return; }
+    _showTonOrder(data, userId);
+  } catch { _setTonStatus('❌ Помилка з\'єднання', 'error'); }
+}
+
+function _showTonOrder(order, userId) {
+  _tonOrder = { ...order, userId };
+  const amtEl    = document.querySelector('#tonAmount');
+  const walletEl = document.querySelector('#tonWallet');
+  const memoEl   = document.querySelector('#tonMemo');
+  if (amtEl)    amtEl.textContent    = `${order.amount_usdt} USDT`;
+  if (walletEl) walletEl.textContent = order.wallet_address || '—';
+  if (memoEl)   memoEl.textContent   = order.memo || '—';
+  _setTonStatus('', '');
+  _startTonTimer(order.expires_at);
+}
+
+function _startTonTimer(expiresAt) {
+  clearInterval(_tonTimerIv);
+  const timerEl    = document.querySelector('#tonTimer');
+  const progressEl = document.querySelector('#tonProgressFill');
+  const totalMs    = 30 * 60 * 1000;
+  const expTime    = new Date(expiresAt).getTime();
+
+  const update = () => {
+    const diff = expTime - Date.now();
+    if (diff <= 0) {
+      if (timerEl)    timerEl.textContent = '00:00';
+      if (progressEl) progressEl.style.width = '0%';
+      clearInterval(_tonTimerIv);
+      _setTonStatus('⏰ Час вийшов. Закрий і відкрий заново.', 'error');
+      const verBtn = document.querySelector('#tonVerifyBtn');
+      if (verBtn) { verBtn.disabled = true; verBtn.textContent = 'Час вийшов'; }
+      return;
+    }
+    const m = Math.floor(diff / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    if (timerEl)    timerEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if (progressEl) progressEl.style.width = `${Math.min(100, (diff / totalMs) * 100)}%`;
+  };
+  update();
+  _tonTimerIv = setInterval(update, 1000);
+}
+
+function _setTonStatus(msg, type) {
+  const el = document.querySelector('#tonStatusMsg');
+  if (!el) return;
+  el.textContent = msg;
+  el.className   = 'ton-status-msg' + (type ? ` is-${type}` : '');
+}
+
+async function _verifyTonPayment() {
+  if (!_tonOrder) return;
+  const verBtn = document.querySelector('#tonVerifyBtn');
+  if (verBtn) { verBtn.disabled = true; verBtn.textContent = '⏳ Перевіряємо…'; }
+  _setTonStatus('', '');
+
+  try {
+    const res  = await fetch(`${API_BASE}/payment/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: _tonOrder.order_id, tg_user_id: _tonOrder.userId }),
+    });
+    const data = await res.json();
+
+    if (data.status === 'paid' || data.status === 'already_paid') {
+      _showTonSuccess();
+    } else if (data.status === 'not_found') {
+      _setTonStatus('Транзакцію не знайдено. Зачекай хвилину і спробуй ще раз.', 'error');
+      if (verBtn) { verBtn.disabled = false; verBtn.textContent = '↻ Перевірити знову'; }
+    } else if (data.status === 'expired' || res.status === 410) {
+      _setTonStatus('⏰ Час вийшов. Закрий і відкрий заново.', 'error');
+      if (verBtn) { verBtn.disabled = true; verBtn.textContent = 'Час вийшов'; }
+    } else {
+      _setTonStatus('Помилка перевірки. Спробуй ще.', 'error');
+      if (verBtn) { verBtn.disabled = false; verBtn.textContent = '✓ Я надіслав оплату'; }
+    }
+  } catch {
+    _setTonStatus('Помилка з\'єднання.', 'error');
+    if (verBtn) { verBtn.disabled = false; verBtn.textContent = '✓ Я надіслав оплату'; }
+  }
+}
+
+function _showTonSuccess() {
+  clearInterval(_tonTimerIv);
+  const succ   = document.querySelector('#tonSuccess');
+  const verBtn = document.querySelector('#tonVerifyBtn');
+  const cards  = tonSheetEl?.querySelectorAll('.ton-card, .ton-instr, .ton-plan-row, .ton-progress, .ton-status-msg');
+  if (verBtn) verBtn.style.display = 'none';
+  cards?.forEach(el => { el.style.display = 'none'; });
+  if (succ) succ.style.display = '';
+}
+
+// Copy buttons for TON sheet
+(function setupTonCopies() {
+  const map = {
+    tonCopyAmount: () => document.querySelector('#tonAmount')?.textContent?.replace(' USDT','').trim(),
+    tonCopyWallet: () => document.querySelector('#tonWallet')?.textContent?.trim(),
+    tonCopyMemo:   () => document.querySelector('#tonMemo')?.textContent?.trim(),
+  };
+  Object.entries(map).forEach(([id, getter]) => {
+    document.querySelector(`#${id}`)?.addEventListener('click', async () => {
+      const val = getter();
+      if (!val || val === '—') return;
+      try {
+        await navigator.clipboard.writeText(val);
+        const btn = document.querySelector(`#${id}`);
+        if (btn) {
+          btn.textContent = '✓';
+          btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = '⧉'; btn.classList.remove('copied'); }, 2000);
+        }
+      } catch {}
+    });
+  });
+})();
+
+document.querySelector('#tonSheetBd')?.addEventListener('click', closeTonSheet);
+document.querySelector('#tonSheetClose')?.addEventListener('click', closeTonSheet);
+document.querySelector('#tonVerifyBtn')?.addEventListener('click', _verifyTonPayment);
+document.querySelector('#tonSuccessClose')?.addEventListener('click', closeTonSheet);
+
+/* ─── Admin: TON config ─── */
+async function loadTonConfig() {
+  try {
+    const res  = await fetch(`${API_BASE}/config/ton?key=${STATS_KEY}`);
+    const data = await res.json();
+    const w = document.querySelector('#cfgTonWallet');
+    const p = document.querySelector('#cfgTonPrice');
+    const a = document.querySelector('#cfgTonAccessLink');
+    if (w && data.wallet)      w.value = data.wallet;
+    if (p && data.price)       p.value = data.price;
+    if (a && data.access_link) a.value = data.access_link;
+  } catch {}
+}
+
+document.querySelector('#saveTonConfig')?.addEventListener('click', async () => {
+  const wallet      = document.querySelector('#cfgTonWallet')?.value.trim() || '';
+  const price       = document.querySelector('#cfgTonPrice')?.value.trim()  || '100';
+  const access_link = document.querySelector('#cfgTonAccessLink')?.value.trim() || '';
+  const msgEl = document.querySelector('#tonConfigMsg');
+  try {
+    await fetch(`${API_BASE}/config/ton?key=${STATS_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet, price, access_link }),
+    });
+    if (msgEl) { msgEl.textContent = '✓ Збережено'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
+  } catch {
+    if (msgEl) { msgEl.textContent = '❌ Помилка'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
   }
 });
 

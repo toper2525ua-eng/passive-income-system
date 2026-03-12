@@ -145,6 +145,29 @@
               </div>
             </section>
 
+            <!-- TON Payment config -->
+            <section class="admin-section">
+              <div class="admin-section-head">
+                <span class="admin-section-title">💰 TON оплата</span>
+              </div>
+              <div class="config-form">
+                <label class="config-label">
+                  <span>TON гаманець (USDT)</span>
+                  <input class="config-input" id="cfgTonWallet" type="text" placeholder="UQA..." autocomplete="off" />
+                </label>
+                <label class="config-label">
+                  <span>Ціна (USDT)</span>
+                  <input class="config-input" id="cfgTonPrice" type="number" placeholder="100" min="1" step="1" />
+                </label>
+                <label class="config-label">
+                  <span>Посилання після оплати</span>
+                  <input class="config-input" id="cfgTonAccessLink" type="url" placeholder="https://t.me/+..." />
+                </label>
+                <button class="btn btn--primary btn--sm" id="saveTonConfig" type="button">💾 Зберегти TON</button>
+                <p class="config-hint" id="tonConfigMsg"></p>
+              </div>
+            </section>
+
             <!-- Screenshots -->
             <section class="admin-section">
               <div class="admin-section-head">
@@ -207,13 +230,13 @@
         <div class="pay-sheet__pill"></div>
         <h3 class="pay-sheet__h">Спосіб оплати</h3>
         <div class="pay-options">
-          <button class="pay-opt pay-opt--soon" id="payOptCrypto" type="button">
+          <button class="pay-opt" id="payOptCrypto" type="button">
             <span class="pay-opt__icon">₿</span>
             <div class="pay-opt__body">
               <strong>Криптовалюта</strong>
-              <span id="cryptoHint">USDT, BTC та інші</span>
+              <span>USDT · TON Network</span>
             </div>
-            <span class="pay-opt__badge">Скоро</span>
+            <span class="pay-opt__chevron">›</span>
           </button>
           <button class="pay-opt" id="payOptCard" type="button">
             <span class="pay-opt__icon">💳</span>
@@ -251,6 +274,85 @@
           <a class="btn btn--ghost btn--sm" id="cardTgBtn" href="#" target="_blank" rel="noreferrer noopener">✈️ Написати в Telegram</a>
         </div>
         <button class="pay-sheet__cancel" id="cardSheetCancel" type="button">← Назад</button>
+      </div>
+    </div>
+
+    <!-- ── TON Payment Sheet ── -->
+    <div class="ton-sheet" id="tonSheet" aria-hidden="true">
+      <div class="ton-sheet__bd" id="tonSheetBd"></div>
+      <div class="ton-sheet__box">
+        <div class="ton-sheet__pill"></div>
+        <!-- Header -->
+        <div class="ton-head">
+          <div>
+            <h3 class="ton-head__title">Оплата підписки</h3>
+            <span class="ton-head__sub">USDT · TON Network</span>
+          </div>
+          <button class="ton-close" id="tonSheetClose" type="button">✕</button>
+        </div>
+        <!-- Plan + timer -->
+        <div class="ton-plan-row">
+          <span class="ton-plan-badge">✦ Доступ до системи</span>
+          <span class="ton-timer" id="tonTimer">30:00</span>
+        </div>
+        <div class="ton-progress"><div class="ton-progress__fill" id="tonProgressFill" style="width:100%"></div></div>
+        <!-- Instructions -->
+        <div class="ton-instr">
+          <span class="ton-instr__label">ІНСТРУКЦІЯ</span>
+          <div class="ton-instr__steps">
+            <span class="ton-num">1</span> Скопіюй дані
+            <span class="ton-arrow">→</span>
+            <span class="ton-num">2</span> Надішли USDT
+            <span class="ton-arrow">→</span>
+            <span class="ton-num">3</span> Підтверди
+          </div>
+          <p class="ton-instr__hint">Відкрий крипто-гаманець → обери мережу TON → токен USDT → відправ на адресу нижче з вказаним Мемо.</p>
+        </div>
+        <!-- Step 1: Amount -->
+        <div class="ton-card">
+          <div class="ton-card__head">
+            <span class="ton-num">1</span>
+            <span class="ton-card__label">НАДІШЛИ ТОЧНУ СУМУ</span>
+          </div>
+          <div class="ton-card__row">
+            <span class="ton-card__val ton-card__val--big" id="tonAmount">— USDT</span>
+            <button class="ton-copy" id="tonCopyAmount" type="button">⧉</button>
+          </div>
+        </div>
+        <!-- Step 2: Wallet -->
+        <div class="ton-card">
+          <div class="ton-card__head">
+            <span class="ton-num">2</span>
+            <span class="ton-card__label">НА ЦЮ АДРЕСУ</span>
+          </div>
+          <div class="ton-card__row">
+            <span class="ton-card__val ton-card__val--addr" id="tonWallet">—</span>
+            <button class="ton-copy" id="tonCopyWallet" type="button">⧉</button>
+          </div>
+        </div>
+        <!-- Step 3: Memo -->
+        <div class="ton-card ton-card--orange">
+          <div class="ton-card__head">
+            <span class="ton-num ton-num--orange">3</span>
+            <span class="ton-card__label ton-card__label--orange">ВКАЖИ ЦЕЙ МЕМО</span>
+          </div>
+          <div class="ton-card__row">
+            <span class="ton-card__val ton-card__val--big" id="tonMemo">—</span>
+            <button class="ton-copy" id="tonCopyMemo" type="button">⧉</button>
+          </div>
+          <p class="ton-memo-warn">⚠️ Без мемо оплата НЕ буде зарахована автоматично!</p>
+        </div>
+        <!-- Status -->
+        <p class="ton-status-msg" id="tonStatusMsg"></p>
+        <!-- Verify button -->
+        <button class="ton-verify-btn" id="tonVerifyBtn" type="button">✓ Я надіслав оплату</button>
+        <!-- Success state -->
+        <div class="ton-success" id="tonSuccess" style="display:none">
+          <div class="ton-success__icon">✅</div>
+          <h3 class="ton-success__title">Оплату підтверджено!</h3>
+          <p class="ton-success__sub">Перевір Telegram — доступ вже там 👆</p>
+          <button class="ton-verify-btn" id="tonSuccessClose" type="button">Закрити</button>
+        </div>
       </div>
     </div>
 

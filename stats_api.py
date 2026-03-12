@@ -5,16 +5,19 @@ Runs on 127.0.0.1:5050, proxied via nginx /api/
 """
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import sqlite3
 import os
 import threading
 import time
+import uuid
+import random
 import requests as req
 
 BOT_TOKEN = "8424430883:AAH6hMh8qqrgN3sRe-1QOfYOJ0xDs4dKuLU"
 SITE_URL  = "https://passiveincomesystem.website"
 TG_API    = f"https://api.telegram.org/bot{BOT_TOKEN}"
+TONAPI_KEY = os.environ.get("TONAPI_KEY", "")   # optional, for higher rate limits
 
 
 def tg_send(chat_id, text, reply_markup=None):
@@ -75,6 +78,7 @@ CORS(app, origins=[
 DB_PATH   = os.path.join(os.path.dirname(__file__), "stats.db")
 ADMIN_KEY = "pisystem_admin_2026"
 OWNER_ID  = "6400309586"
+USDT_DECIMALS = 1_000_000   # USDT has 6 decimals on TON
 
 
 def get_db():
@@ -108,9 +112,115 @@ def init_db():
             created TEXT    NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS config (
+            key     TEXT PRIMARY KEY,
+            value   TEXT NOT NULL DEFAULT ''
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id          TEXT PRIMARY KEY,
+            tg_user_id  TEXT NOT NULL,
+            amount_usdt REAL NOT NULL DEFAULT 100.0,
+            memo        TEXT NOT NULL,
+            status      TEXT NOT NULL DEFAULT 'pending',
+            tx_hash     TEXT,
+            created_at  TEXT NOT NULL,
+            expires_at  TEXT NOT NULL,
+            verified_at TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
+
+# ── Config helpers ──────────────────────────────────────────────────────────
+
+def get_cfg(key, default=""):
+    conn = get_db()
+    row  = conn.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
+    conn.close()
+    return row["value"] if row else default
+
+def set_cfg(key, value):
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()
+
+
+# ── TON payment helpers ─────────────────────────────────────────────────────
+
+def _extract_memo(tx):
+    """Extract text memo/comment from a TON transaction dict."""
+    in_msg  = tx.get("in_msg", {})
+    decoded = in_msg.get("decoded_body") or {}
+
+    fwd = decoded.get("forward_payload")
+    if isinstance(fwd, dict):
+        val = fwd.get("value")
+        if isinstance(val, dict):
+            inner = val.get("value")
+            if isinstance(inner, dict) and "text" in inner:
+                return inner["text"]
+            if "text" in val:
+                return val["text"]
+            payload = val.get("payload")
+            if payload:
+                try:
+                    return bytes.fromhex(payload).decode("utf-8")
+                except Exception:
+                    pass
+
+    payload = decoded.get("payload")
+    if payload and isinstance(payload, str):
+        try:
+            return bytes.fromhex(payload).decode("utf-8")
+        except Exception:
+            pass
+
+    if decoded.get("text"):
+        return decoded["text"]
+    if in_msg.get("comment"):
+        return in_msg["comment"]
+    return None
+
+
+def check_ton_transaction(wallet, expected_memo, expected_amount_raw):
+    """Query tonapi.io for a matching USDT jetton_notify transaction.
+    Returns (verified: bool, tx_hash: str|None)."""
+    url     = f"https://tonapi.io/v2/blockchain/accounts/{wallet}/transactions?limit=100"
+    headers = {}
+    if TONAPI_KEY:
+        headers["Authorization"] = f"Bearer {TONAPI_KEY}"
+    try:
+        r = req.get(url, headers=headers, timeout=15)
+        if r.status_code != 200:
+            return False, None
+        for tx in r.json().get("transactions", []):
+            in_msg = tx.get("in_msg", {})
+            if in_msg.get("decoded_op_name") != "jetton_notify":
+                continue
+            memo = _extract_memo(tx)
+            if not memo or memo.strip() != expected_memo:
+                continue
+            decoded    = in_msg.get("decoded_body") or {}
+            raw_amount = decoded.get("amount")
+            if not raw_amount:
+                continue
+            try:
+                amount = int(raw_amount)
+            except (ValueError, TypeError):
+                continue
+            if amount >= expected_amount_raw:
+                return True, tx.get("hash", "")
+    except Exception:
+        pass
+    return False, None
+
+
+# ── Existing routes ──────────────────────────────────────────────────────────
 
 @app.route("/api/track", methods=["POST", "OPTIONS"])
 def track():
@@ -269,6 +379,186 @@ def delete_screenshot(shot_id):
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
+
+
+# ── TON config (admin) ───────────────────────────────────────────────────────
+
+@app.route("/api/config/ton", methods=["GET"])
+def get_ton_config():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    return jsonify({
+        "wallet":      get_cfg("ton_wallet"),
+        "price":       get_cfg("ton_price", "100"),
+        "access_link": get_cfg("ton_access_link"),
+    })
+
+
+@app.route("/api/config/ton", methods=["POST"])
+def set_ton_config():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    if "wallet" in data:
+        set_cfg("ton_wallet",       data["wallet"].strip())
+    if "price" in data:
+        set_cfg("ton_price",        str(data["price"]).strip())
+    if "access_link" in data:
+        set_cfg("ton_access_link",  data["access_link"].strip())
+    return jsonify({"ok": True})
+
+
+# ── Payment endpoints ────────────────────────────────────────────────────────
+
+@app.route("/api/payment/create-order", methods=["POST"])
+def create_order():
+    data       = request.get_json(silent=True) or {}
+    tg_user_id = str(data.get("tg_user_id", "")).strip()
+    if not tg_user_id:
+        return jsonify({"error": "missing tg_user_id"}), 400
+
+    wallet = get_cfg("ton_wallet")
+    if not wallet:
+        return jsonify({"error": "payment_not_configured"}), 503
+
+    try:
+        price = float(get_cfg("ton_price", "100"))
+    except ValueError:
+        price = 100.0
+
+    conn = get_db()
+    now_str = datetime.now().isoformat()
+
+    # Return existing pending order if still valid
+    existing = conn.execute(
+        "SELECT * FROM orders WHERE tg_user_id=? AND status='pending' AND expires_at>?",
+        (tg_user_id, now_str)
+    ).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({
+            "order_id":       existing["id"],
+            "wallet_address": wallet,
+            "amount_usdt":    existing["amount_usdt"],
+            "memo":           existing["memo"],
+            "expires_at":     existing["expires_at"],
+        })
+
+    # Expire old pending orders for this user
+    conn.execute(
+        "UPDATE orders SET status='expired' WHERE tg_user_id=? AND status='pending'",
+        (tg_user_id,)
+    )
+
+    # Generate unique 8-digit memo
+    while True:
+        memo = str(random.randint(10000000, 99999999))
+        if not conn.execute(
+            "SELECT id FROM orders WHERE memo=? AND status='pending'", (memo,)
+        ).fetchone():
+            break
+
+    order_id   = str(uuid.uuid4())
+    created_at = datetime.now()
+    expires_at = created_at + timedelta(minutes=30)
+
+    conn.execute(
+        "INSERT INTO orders (id, tg_user_id, amount_usdt, memo, status, created_at, expires_at) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (order_id, tg_user_id, price, memo, "pending",
+         created_at.isoformat(), expires_at.isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "order_id":       order_id,
+        "wallet_address": wallet,
+        "amount_usdt":    price,
+        "memo":           memo,
+        "expires_at":     expires_at.isoformat(),
+    })
+
+
+@app.route("/api/payment/verify", methods=["POST"])
+def verify_payment():
+    data       = request.get_json(silent=True) or {}
+    order_id   = str(data.get("order_id",   "")).strip()
+    tg_user_id = str(data.get("tg_user_id", "")).strip()
+
+    conn  = get_db()
+    order = conn.execute(
+        "SELECT * FROM orders WHERE id=? AND tg_user_id=?", (order_id, tg_user_id)
+    ).fetchone()
+
+    if not order:
+        conn.close()
+        return jsonify({"error": "not found"}), 404
+
+    if order["status"] == "paid":
+        conn.close()
+        return jsonify({"status": "already_paid"})
+
+    now_str = datetime.now().isoformat()
+    if order["status"] == "expired" or order["expires_at"] < now_str:
+        conn.execute("UPDATE orders SET status='expired' WHERE id=?", (order_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "expired"}), 410
+
+    wallet       = get_cfg("ton_wallet")
+    expected_raw = int(order["amount_usdt"] * USDT_DECIMALS)
+
+    verified, tx_hash = check_ton_transaction(wallet, order["memo"], expected_raw)
+
+    if not verified:
+        conn.close()
+        return jsonify({"status": "not_found"})
+
+    # Mark as paid
+    verified_at = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE orders SET status='paid', tx_hash=?, verified_at=? WHERE id=?",
+        (tx_hash, verified_at, order_id)
+    )
+    conn.commit()
+    conn.close()
+
+    # Send access link via Telegram bot
+    access_link = get_cfg("ton_access_link")
+    if access_link and tg_user_id:
+        tg_send(tg_user_id,
+            "✅ <b>Оплату підтверджено!</b>\n\n"
+            "Ось твоє посилання для доступу до системи 👇\n"
+            f"{access_link}"
+        )
+
+    return jsonify({"status": "paid"})
+
+
+@app.route("/api/payment/pending", methods=["GET"])
+def pending_order():
+    tg_user_id = request.args.get("tg_user_id", "")
+    if not tg_user_id:
+        return jsonify({"order": None})
+    conn    = get_db()
+    now_str = datetime.now().isoformat()
+    order   = conn.execute(
+        "SELECT * FROM orders WHERE tg_user_id=? AND status='pending' AND expires_at>? "
+        "ORDER BY created_at DESC LIMIT 1",
+        (tg_user_id, now_str)
+    ).fetchone()
+    conn.close()
+    if not order:
+        return jsonify({"order": None})
+    wallet = get_cfg("ton_wallet")
+    return jsonify({"order": {
+        "order_id":       order["id"],
+        "wallet_address": wallet,
+        "amount_usdt":    order["amount_usdt"],
+        "memo":           order["memo"],
+        "expires_at":     order["expires_at"],
+    }})
 
 
 if __name__ == "__main__":
