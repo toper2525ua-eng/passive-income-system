@@ -945,7 +945,7 @@ function _lbShow() {
   const prev    = document.querySelector('#lightboxPrev');
   const next    = document.querySelector('#lightboxNext');
   if (img)     img.src = photo?.src || '';
-  if (cap)     cap.textContent = _lbCaption;
+  if (cap)     cap.textContent = '';
   if (counter) counter.textContent = _lbPhotos.length > 1 ? `${_lbIndex + 1} / ${_lbPhotos.length}` : '';
   if (prev)    prev.disabled = _lbIndex <= 0;
   if (next)    next.disabled = _lbIndex >= _lbPhotos.length - 1;
