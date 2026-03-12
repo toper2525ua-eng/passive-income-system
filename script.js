@@ -310,19 +310,25 @@ function buildList(items = []) {
 }
 
 function buildMedia(media = [], screenId = '') {
-  // Photo banners ONLY on results screen
+  // Photo banners ONLY on results screen — animated slideshow per category
   if (screenId === 'results') {
     const LABELS = { results: '📊 Результати', reviews: '💬 Відгуки', process: '📈 Процес' };
     const banners = Object.keys(SHOT_KEYS).map(type => {
       const shots = getShotsByType(type);
       if (!shots.length) return null;
-      // one banner per category — shows first photo, label = category name
-      const s = shots[0];
-      return `<div class="screenshot-banner" data-lightbox-src="${s.src}" data-lightbox-caption="${LABELS[type]}">
-        <img src="${s.src}" alt="${LABELS[type]}" loading="lazy" />
+      const label = LABELS[type];
+      const slidesHtml = shots.map((s, i) => `
+        <div class="banner-slide${i === 0 ? ' is-active' : ''}" data-index="${i}">
+          <img src="${s.src}" alt="${label}" loading="lazy" />
+        </div>`).join('');
+      const dotsHtml = shots.length > 1
+        ? `<div class="banner-dots">${shots.map((_, i) => `<span class="banner-dot${i === 0 ? ' is-active' : ''}"></span>`).join('')}</div>`
+        : '';
+      return `<div class="screenshot-banner" data-category="${type}" data-slide-count="${shots.length}">
+        <div class="banner-slides">${slidesHtml}</div>
         <div class="screenshot-banner__footer">
-          <span class="screenshot-banner__label">${LABELS[type]}</span>
-          <span class="screenshot-banner__zoom">🔍</span>
+          <span class="screenshot-banner__label">${label}</span>
+          ${dotsHtml}
         </div>
       </div>`;
     }).filter(Boolean);
@@ -337,6 +343,33 @@ function buildMedia(media = [], screenId = '') {
       <h4>${m.title}</h4>
       <p>${m.description}</p>
     </article>`).join("")}</div>`;
+}
+
+/* ─── Banner slideshow ─── */
+const _slideshowTimers = [];
+
+function clearSlideshowTimers() {
+  _slideshowTimers.forEach(id => clearInterval(id));
+  _slideshowTimers.length = 0;
+}
+
+function initBannerSlideshows() {
+  clearSlideshowTimers();
+  document.querySelectorAll('.screenshot-banner[data-slide-count]').forEach(banner => {
+    const count = parseInt(banner.dataset.slideCount, 10);
+    if (count < 2) return;
+    let current = 0;
+    const timer = setInterval(() => {
+      const slides = banner.querySelectorAll('.banner-slide');
+      const dots   = banner.querySelectorAll('.banner-dot');
+      slides[current]?.classList.remove('is-active');
+      dots[current]?.classList.remove('is-active');
+      current = (current + 1) % count;
+      slides[current]?.classList.add('is-active');
+      dots[current]?.classList.add('is-active');
+    }, 3500);
+    _slideshowTimers.push(timer);
+  });
 }
 
 function buildFaq(faq = []) {
@@ -439,6 +472,8 @@ function renderScreen(id) {
 
   bindConfiguredLinks(screenContentEl);
   trackView(id);
+
+  if (id === 'results') initBannerSlideshows();
 
   // Scroll content to top on screen change
   const panel = document.querySelector("#panel-bot .panel-content");
@@ -898,12 +933,29 @@ document.querySelector('#screenshotFileInput')?.addEventListener('change', async
 
 /* ─── Lightbox ─── */
 const lightboxEl = document.querySelector('#lightbox');
+let _lbPhotos  = [];   // array of {src, label}
+let _lbIndex   = 0;
+let _lbCaption = '';
 
-function openLightbox(src, caption) {
-  const img = document.querySelector('#lightboxImg');
-  const cap = document.querySelector('#lightboxCaption');
-  if (img) img.src = src;
-  if (cap) cap.textContent = caption || '';
+function _lbShow() {
+  const photo   = _lbPhotos[_lbIndex];
+  const img     = document.querySelector('#lightboxImg');
+  const cap     = document.querySelector('#lightboxCaption');
+  const counter = document.querySelector('#lightboxCounter');
+  const prev    = document.querySelector('#lightboxPrev');
+  const next    = document.querySelector('#lightboxNext');
+  if (img)     img.src = photo?.src || '';
+  if (cap)     cap.textContent = _lbCaption;
+  if (counter) counter.textContent = _lbPhotos.length > 1 ? `${_lbIndex + 1} / ${_lbPhotos.length}` : '';
+  if (prev)    prev.disabled = _lbIndex <= 0;
+  if (next)    next.disabled = _lbIndex >= _lbPhotos.length - 1;
+}
+
+function openLightbox(photos, startIndex, caption) {
+  _lbPhotos  = photos;
+  _lbIndex   = startIndex;
+  _lbCaption = caption || '';
+  _lbShow();
   lightboxEl?.removeAttribute('aria-hidden');
   document.body.style.overflow = 'hidden';
 }
@@ -915,16 +967,58 @@ function closeLightbox() {
   if (img) setTimeout(() => { img.src = ''; }, 250);
 }
 
+function lightboxNavigate(delta) {
+  const newIdx = _lbIndex + delta;
+  if (newIdx < 0 || newIdx >= _lbPhotos.length) return;
+  const img = document.querySelector('#lightboxImg');
+  if (img) {
+    img.classList.add('is-fading');
+    setTimeout(() => {
+      _lbIndex = newIdx;
+      _lbShow();
+      img.classList.remove('is-fading');
+    }, 180);
+  } else {
+    _lbIndex = newIdx;
+    _lbShow();
+  }
+}
+
 document.querySelector('#lightboxBd')?.addEventListener('click', closeLightbox);
 document.querySelector('#lightboxClose')?.addEventListener('click', closeLightbox);
+document.querySelector('#lightboxPrev')?.addEventListener('click', () => lightboxNavigate(-1));
+document.querySelector('#lightboxNext')?.addEventListener('click', () => lightboxNavigate(1));
 
+// Click on banner → open lightbox for that category
 document.addEventListener('click', e => {
-  const banner = e.target.closest('[data-lightbox-src]');
-  if (banner) openLightbox(banner.dataset.lightboxSrc, banner.dataset.lightboxCaption);
+  const banner = e.target.closest('.screenshot-banner[data-category]');
+  if (!banner) return;
+  const type    = banner.dataset.category;
+  const LABELS  = { results: '📊 Результати', reviews: '💬 Відгуки', process: '📈 Процес' };
+  const shots   = getShotsByType(type);
+  if (!shots.length) return;
+  // start from the currently visible slide
+  const slides = banner.querySelectorAll('.banner-slide');
+  let startIdx = 0;
+  slides.forEach((s, i) => { if (s.classList.contains('is-active')) startIdx = i; });
+  openLightbox(shots, startIdx, LABELS[type] || '');
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeLightbox();
+  if (lightboxEl?.getAttribute('aria-hidden') === 'true') return;
+  if (e.key === 'Escape')      closeLightbox();
+  if (e.key === 'ArrowLeft')   lightboxNavigate(-1);
+  if (e.key === 'ArrowRight')  lightboxNavigate(1);
+});
+
+// Touch swipe in lightbox
+let _lbTouchX = 0;
+lightboxEl?.addEventListener('touchstart', e => {
+  _lbTouchX = e.touches[0].clientX;
+}, { passive: true });
+lightboxEl?.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - _lbTouchX;
+  if (Math.abs(dx) > 50) lightboxNavigate(dx < 0 ? 1 : -1);
 });
 
 /* ─── Init ─── */
@@ -942,5 +1036,6 @@ checkAdminAccess();
 // Load screenshots from server, then re-render results if needed
 loadScreenshots().then(() => {
   if (currentScreenId === 'results') renderScreen('results');
+  // renderScreen already calls initBannerSlideshows for 'results'
 });
 
