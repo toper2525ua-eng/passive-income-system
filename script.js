@@ -776,6 +776,21 @@ document.querySelector('#saveConfig')?.addEventListener('click', () => {
 });
 
 /* ─── Screenshots storage ─── */
+function migrateScreenshots() {
+  // Migrate from old 3-type keys into single key
+  const oldKeys = ['pi_shots_results', 'pi_shots_reviews', 'pi_shots_process'];
+  const current = JSON.parse(localStorage.getItem(SCREENSHOTS_KEY) || '[]');
+  let migrated = [...current];
+  let changed = false;
+  oldKeys.forEach(k => {
+    try {
+      const old = JSON.parse(localStorage.getItem(k) || '[]');
+      if (old.length) { migrated = migrated.concat(old); localStorage.removeItem(k); changed = true; }
+    } catch {}
+  });
+  if (changed) localStorage.setItem(SCREENSHOTS_KEY, JSON.stringify(migrated));
+}
+
 function getScreenshots() {
   try { return JSON.parse(localStorage.getItem(SCREENSHOTS_KEY) || '[]'); }
   catch { return []; }
@@ -890,7 +905,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ─── Init ─── */
-// Apply saved config
+migrateScreenshots(); // merge old pi_shots_* keys into pi_screenshots
 const savedLinks = JSON.parse(localStorage.getItem('pi_links') || '{}');
 if (Object.keys(savedLinks).length) applyConfig(savedLinks);
 
