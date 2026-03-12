@@ -495,7 +495,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadStats(); loadConfig(); renderAdminsList(); renderAdminScreenshots(); }
+  if (tabId === 'admin') { loadStats(); loadConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); }
 }
 
 /* ─── Event listeners ─── */
@@ -789,23 +789,19 @@ document.querySelector('#saveConfig')?.addEventListener('click', () => {
   if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
 });
 
-/* ─── Screenshots storage (3 types, combined display) ─── */
+/* ─── Screenshots — server storage ─── */
+let shotsData = { results: [], reviews: [], process: [] };
+
+async function loadScreenshots() {
+  try {
+    const res  = await fetch(`${API_BASE}/screenshots`);
+    const data = await res.json();
+    if (data && typeof data === 'object') shotsData = data;
+  } catch {}
+}
+
 function getShotsByType(type) {
-  try { return JSON.parse(localStorage.getItem(SHOT_KEYS[type]) || '[]'); }
-  catch { return []; }
-}
-function saveShotsByType(type, list) {
-  localStorage.setItem(SHOT_KEYS[type], JSON.stringify(list));
-}
-// Returns ALL photos merged (for carousel display on results screen)
-function getScreenshots() {
-  return [
-    ...getShotsByType('results'),
-    ...getShotsByType('reviews'),
-    ...getShotsByType('process'),
-    // also pick up any old single-key photos
-    ...((() => { try { return JSON.parse(localStorage.getItem('pi_screenshots') || '[]'); } catch { return []; } })()),
-  ];
+  return shotsData[type] || [];
 }
 
 function resizeImageToDataURL(file, maxWidth = 900, quality = 0.78) {
@@ -830,7 +826,7 @@ function resizeImageToDataURL(file, maxWidth = 900, quality = 0.78) {
 function renderAdminScreenshots() {
   const container = document.querySelector('#adminScreenshots');
   if (!container) return;
-  const list = getShotsByType(adminActiveType);
+  const list   = getShotsByType(adminActiveType);
   const labels = { results: 'Результати', reviews: 'Відгуки', process: 'Процес' };
   if (!list.length) {
     container.innerHTML = `<p class="admin-list-empty">У «${labels[adminActiveType]}» ще немає фото 👆</p>`;
@@ -846,12 +842,17 @@ function renderAdminScreenshots() {
     </div>`).join('')}</div>`;
 
   container.querySelectorAll('.admin-screenshot-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id      = Number(btn.dataset.id);
-      const updated = getShotsByType(adminActiveType).filter(s => s.id !== id);
-      saveShotsByType(adminActiveType, updated);
-      renderAdminScreenshots();
-      if (currentScreenId === 'results') renderScreen('results');
+    btn.addEventListener('click', async () => {
+      const id  = Number(btn.dataset.id);
+      const msgEl = document.querySelector('#screenshotMsg');
+      try {
+        await fetch(`${API_BASE}/screenshots/${id}?key=${STATS_KEY}`, { method: 'DELETE' });
+        await loadScreenshots();
+        renderAdminScreenshots();
+        if (currentScreenId === 'results') renderScreen('results');
+      } catch {
+        if (msgEl) { msgEl.textContent = '❌ Помилка видалення'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
+      }
     });
   });
 }
@@ -873,20 +874,23 @@ document.querySelector('#screenshotFileInput')?.addEventListener('change', async
   const file = e.target.files?.[0];
   if (!file) return;
   const msgEl = document.querySelector('#screenshotMsg');
-  if (msgEl) msgEl.textContent = '⏳ Обробляємо…';
+  if (msgEl) msgEl.textContent = '⏳ Завантажуємо…';
   try {
     const src     = await resizeImageToDataURL(file);
     const label   = document.querySelector('#screenshotLabel')?.value.trim();
-    const list    = getShotsByType(adminActiveType);
-    const idx     = list.length + 1;
-    list.push({ id: Date.now(), src, label: label || `Скрін ${idx}` });
-    saveShotsByType(adminActiveType, list);
+    const idx     = getShotsByType(adminActiveType).length + 1;
+    await fetch(`${API_BASE}/screenshots?key=${STATS_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: adminActiveType, src, label: label || `Скрін ${idx}` }),
+    });
     const labelEl = document.querySelector('#screenshotLabel');
     if (labelEl) labelEl.value = '';
     e.target.value = '';
+    await loadScreenshots();
     renderAdminScreenshots();
     if (currentScreenId === 'results') renderScreen('results');
-    if (msgEl) { msgEl.textContent = '✓ Додано'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
+    if (msgEl) { msgEl.textContent = '✓ Збережено на сервері'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
   } catch {
     if (msgEl) { msgEl.textContent = '❌ Помилка. Спробуй ще'; setTimeout(() => { msgEl.textContent = ''; }, 2500); }
   }
@@ -934,4 +938,9 @@ renderFaqTab();
 renderAccessTab();
 trackView('home');
 checkAdminAccess();
+
+// Load screenshots from server, then re-render results if needed
+loadScreenshots().then(() => {
+  if (currentScreenId === 'results') renderScreen('results');
+});
 

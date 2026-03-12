@@ -99,6 +99,15 @@ def init_db():
             entry   TEXT    UNIQUE NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS screenshots (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            type    TEXT    NOT NULL DEFAULT 'results',
+            label   TEXT    NOT NULL DEFAULT '',
+            src     TEXT    NOT NULL,
+            created TEXT    NOT NULL
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -208,6 +217,55 @@ def remove_admin():
         return jsonify({"error": "cannot remove owner"}), 400
     conn = get_db()
     conn.execute("DELETE FROM admins WHERE entry = ?", (entry,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/screenshots", methods=["GET"])
+def get_screenshots():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, type, label, src FROM screenshots ORDER BY id"
+    ).fetchall()
+    conn.close()
+    result = {"results": [], "reviews": [], "process": []}
+    for r in rows:
+        t = r["type"]
+        if t in result:
+            result[t].append({"id": r["id"], "label": r["label"], "src": r["src"]})
+    return jsonify(result)
+
+
+@app.route("/api/screenshots", methods=["POST"])
+def add_screenshot():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    data  = request.get_json(silent=True) or {}
+    type_ = data.get("type", "results")
+    label = data.get("label", "")
+    src   = data.get("src", "")
+    if not src:
+        return jsonify({"error": "empty src"}), 400
+    if type_ not in ("results", "reviews", "process"):
+        return jsonify({"error": "invalid type"}), 400
+    conn   = get_db()
+    cursor = conn.execute(
+        "INSERT INTO screenshots (type, label, src, created) VALUES (?, ?, ?, ?)",
+        (type_, label, src, datetime.now().isoformat()),
+    )
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "id": new_id})
+
+
+@app.route("/api/screenshots/<int:shot_id>", methods=["DELETE"])
+def delete_screenshot(shot_id):
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    conn = get_db()
+    conn.execute("DELETE FROM screenshots WHERE id = ?", (shot_id,))
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
