@@ -309,17 +309,26 @@ function buildList(items = []) {
   return `<ul class="screen-list">${items.map(i => `<li>${i}</li>`).join("")}</ul>`;
 }
 
-function buildMedia(media = []) {
-  const shots = getScreenshots();
-  if (shots.length) {
-    return `<div class="screenshot-banners">${shots.map(s => `
-      <div class="screenshot-banner" data-lightbox-src="${s.src}" data-lightbox-caption="${s.label}">
-        <img src="${s.src}" alt="${s.label}" loading="lazy" />
+function buildMedia(media = [], screenId = '') {
+  // Photo banners ONLY on results screen
+  if (screenId === 'results') {
+    const LABELS = { results: '📊 Результати', reviews: '💬 Відгуки', process: '📈 Процес' };
+    const banners = Object.keys(SHOT_KEYS).map(type => {
+      const shots = getShotsByType(type);
+      if (!shots.length) return null;
+      // one banner per category — shows first photo, label = category name
+      const s = shots[0];
+      return `<div class="screenshot-banner" data-lightbox-src="${s.src}" data-lightbox-caption="${LABELS[type]}">
+        <img src="${s.src}" alt="${LABELS[type]}" loading="lazy" />
         <div class="screenshot-banner__footer">
-          <span class="screenshot-banner__label">${s.label}</span>
+          <span class="screenshot-banner__label">${LABELS[type]}</span>
           <span class="screenshot-banner__zoom">🔍</span>
         </div>
-      </div>`).join('')}</div>`;
+      </div>`;
+    }).filter(Boolean);
+    if (banners.length) {
+      return `<div class="screenshot-banners">${banners.join('')}</div>`;
+    }
   }
   if (!media.length) return "";
   return `<div class="screen-media-grid">${media.map(m => `
@@ -422,7 +431,7 @@ function renderScreen(id) {
       ${paragraphs}
       ${buildMetrics(screen.metrics)}
       ${buildList(screen.bullets)}
-      ${buildMedia(screen.media)}
+      ${buildMedia(screen.media, id)}
       ${buildFaq(screen.faq)}
       ${buildNote(screen.note)}
       ${buildActions(screen.actions)}

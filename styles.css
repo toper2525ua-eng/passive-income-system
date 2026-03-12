@@ -668,35 +668,26 @@ button, input { font: inherit; }
   text-align: center; line-height: 1.55;
 }
 
-/* ─── Screenshot banners carousel (results screen) ─── */
+/* ─── Screenshot banners (results screen only) ─── */
 .screenshot-banners {
-  display: flex; flex-direction: row;
-  gap: 10px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  /* bleed to card edges */
-  margin: 8px -16px 4px;
-  padding: 4px 16px 10px;
+  display: flex; flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 4px;
 }
-.screenshot-banners::-webkit-scrollbar { display: none; }
 
 .screenshot-banner {
   position: relative;
-  flex-shrink: 0;
-  width: 82%;
+  width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--r-md);
   overflow: hidden;
   cursor: pointer;
-  scroll-snap-align: start;
-  box-shadow: 0 4px 20px rgba(23,33,27,.15);
+  box-shadow: 0 4px 20px rgba(23,33,27,.14);
   background: rgba(23,33,27,.07);
   -webkit-tap-highlight-color: transparent;
   transition: transform .15s ease;
 }
-.screenshot-banner:active { transform: scale(.97); }
+.screenshot-banner:active { transform: scale(.98); }
 
 .screenshot-banner img {
   display: block;
@@ -707,17 +698,17 @@ button, input { font: inherit; }
 .screenshot-banner__footer {
   position: absolute; bottom: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 12px 10px;
-  background: linear-gradient(to top, rgba(10,14,11,.75) 0%, transparent 100%);
+  padding: 22px 14px 12px;
+  background: linear-gradient(to top, rgba(10,14,11,.78) 0%, transparent 100%);
 }
 
 .screenshot-banner__label {
-  font-size: .76rem; font-weight: 700;
-  color: rgba(255,255,255,.93); letter-spacing: .02em;
+  font-size: .82rem; font-weight: 700;
+  color: rgba(255,255,255,.95); letter-spacing: .02em;
 }
 
 .screenshot-banner__zoom {
-  font-size: .82rem; opacity: .8;
+  font-size: .86rem; opacity: .82;
 }
 
 /* ─── Lightbox ─── */
