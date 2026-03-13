@@ -392,6 +392,36 @@ def set_ton_config():
     return jsonify({"ok": True})
 
 
+# ── Links config (admin) ─────────────────────────────────────────────────────
+
+@app.route("/api/config/links", methods=["GET"])
+def get_links_config():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    return jsonify({
+        "telegram": get_cfg("links_telegram"),
+        "payment":  get_cfg("links_payment"),
+        "bybit":    get_cfg("links_bybit"),
+        "card":     get_cfg("links_card"),
+    })
+
+
+@app.route("/api/config/links", methods=["POST"])
+def set_links_config():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    if "telegram" in data:
+        set_cfg("links_telegram", data["telegram"].strip())
+    if "payment" in data:
+        set_cfg("links_payment",  data["payment"].strip())
+    if "bybit" in data:
+        set_cfg("links_bybit",    data["bybit"].strip())
+    if "card" in data:
+        set_cfg("links_card",     data["card"].strip())
+    return jsonify({"ok": True})
+
+
 # ── Payment endpoints ────────────────────────────────────────────────────────
 
 @app.route("/api/payment/create-order", methods=["POST"])

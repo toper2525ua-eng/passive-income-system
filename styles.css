@@ -574,6 +574,7 @@ button, input { font: inherit; }
 .pay-opt--soon:active { transform: none; background: var(--card); }
 
 .pay-opt__icon { font-size: 1.5rem; line-height: 1; flex-shrink: 0; width: 36px; text-align: center; }
+.tg-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: block; }
 
 .pay-opt__body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .pay-opt__body strong { font-size: .95rem; font-weight: 700; }

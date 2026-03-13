@@ -522,6 +522,25 @@ function bindConfiguredLinks(scope = document) {
       el.removeAttribute("target");
     }
   });
+  updateTgAvatar();
+}
+
+function updateTgAvatar() {
+  const img = document.querySelector('#tgAvatarImg');
+  if (!img) return;
+  const tgUrl = appConfig.links.telegram || '';
+  const match = tgUrl.match(/t\.me\/([A-Za-z0-9_]+)/);
+  if (match) {
+    const username = match[1];
+    img.src = `https://unavatar.io/telegram/${username}`;
+    img.style.display = 'block';
+    const fallback = img.nextElementSibling;
+    if (fallback) fallback.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    const fallback = img.nextElementSibling;
+    if (fallback) fallback.style.display = 'inline';
+  }
 }
 
 /* ─── Tab switching ─── */
@@ -750,37 +769,48 @@ document.querySelector('#copyCardBtn')?.addEventListener('click', () => {
 });
 
 /* ─── Admin: config form ─── */
-function loadConfig() {
-  const saved = JSON.parse(localStorage.getItem('pi_links') || '{}');
-  if (saved.telegram) document.querySelector('#cfgTelegram').value = saved.telegram;
-  if (saved.payment)  document.querySelector('#cfgPayment').value  = saved.payment;
-  if (saved.bybit)    document.querySelector('#cfgBybit').value    = saved.bybit;
-  const cfgCard = document.querySelector('#cfgCard');
-  if (cfgCard) cfgCard.value = localStorage.getItem('pi_card') || '';
+async function loadConfig() {
+  try {
+    const res  = await fetch(`${API_BASE}/config/links?key=${STATS_KEY}`);
+    const data = await res.json();
+    if (data.telegram) document.querySelector('#cfgTelegram').value = data.telegram;
+    if (data.payment)  document.querySelector('#cfgPayment').value  = data.payment;
+    if (data.bybit)    document.querySelector('#cfgBybit').value    = data.bybit;
+    const cfgCard = document.querySelector('#cfgCard');
+    if (cfgCard && data.card) cfgCard.value = data.card;
+    applyConfig(data);
+  } catch (e) {}
 }
 
 function applyConfig(links) {
   if (links.telegram) appConfig.links.telegram = links.telegram;
   if (links.payment)  appConfig.links.payment  = links.payment;
   if (links.bybit)    appConfig.links.bybit    = links.bybit;
+  if (links.card)     localStorage.setItem('pi_card', links.card);
   bindConfiguredLinks();
   renderFaqTab();
   renderAccessTab();
 }
 
-document.querySelector('#saveConfig')?.addEventListener('click', () => {
+document.querySelector('#saveConfig')?.addEventListener('click', async () => {
   const links = {
     telegram: document.querySelector('#cfgTelegram').value.trim(),
     payment:  document.querySelector('#cfgPayment').value.trim(),
     bybit:    document.querySelector('#cfgBybit').value.trim(),
+    card:     document.querySelector('#cfgCard')?.value.trim() || '',
   };
-  localStorage.setItem('pi_links', JSON.stringify(links));
-  const card = document.querySelector('#cfgCard')?.value.trim() || '';
-  if (card) localStorage.setItem('pi_card', card);
-  else localStorage.removeItem('pi_card');
-  applyConfig(links);
   const msg = document.querySelector('#configMsg');
-  if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+  try {
+    await fetch(`${API_BASE}/config/links?key=${STATS_KEY}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(links),
+    });
+    applyConfig(links);
+    if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+  } catch (e) {
+    if (msg) { msg.textContent = '✗ Помилка збереження'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+  }
 });
 
 /* ─── Screenshots — server storage ─── */
@@ -1200,8 +1230,11 @@ lightboxEl?.addEventListener('touchend', e => {
 });
 
 /* ─── Init ─── */
-const savedLinks = JSON.parse(localStorage.getItem('pi_links') || '{}');
-if (Object.keys(savedLinks).length) applyConfig(savedLinks);
+// Load links from server on startup
+fetch(`${API_BASE}/config/links?key=${STATS_KEY}`)
+  .then(r => r.json())
+  .then(data => { if (data && !data.error) applyConfig(data); })
+  .catch(() => {});
 
 bindConfiguredLinks();
 renderQuickActions();
