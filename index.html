@@ -216,7 +216,7 @@
             <span class="pay-opt__icon">₿</span>
             <div class="pay-opt__body">
               <strong>Криптовалюта</strong>
-              <span>USDT · TON Network</span>
+              <span>BTC · ETH · USDT · TON та інші</span>
             </div>
             <span class="pay-opt__chevron">›</span>
           </button>
@@ -256,6 +256,73 @@
           <a class="btn btn--ghost btn--sm" id="cardTgBtn" href="#" target="_blank" rel="noreferrer noopener">✈️ Написати в Telegram</a>
         </div>
         <button class="pay-sheet__cancel" id="cardSheetCancel" type="button">← Назад</button>
+      </div>
+    </div>
+
+    <!-- ── Crypto submenu sheet ── -->
+    <div class="pay-sheet" id="cryptoSheet" aria-hidden="true">
+      <div class="pay-sheet__bd" id="cryptoSheetBd"></div>
+      <div class="pay-sheet__box">
+        <div class="pay-sheet__pill"></div>
+        <h3 class="pay-sheet__h">Криптовалюта</h3>
+        <div class="pay-options">
+          <button class="pay-opt" id="cryptoOptTon" type="button">
+            <span class="pay-opt__icon">💎</span>
+            <div class="pay-opt__body">
+              <strong>TONKeeper <span class="crypto-auto-badge">Авто</span></strong>
+              <span>USDT · TON Network</span>
+            </div>
+            <span class="pay-opt__chevron">›</span>
+          </button>
+          <button class="pay-opt" id="cryptoOptBtc" type="button">
+            <span class="pay-opt__icon">₿</span>
+            <div class="pay-opt__body">
+              <strong>Bitcoin</strong>
+              <span>BTC · підтвердження адміном</span>
+            </div>
+            <span class="pay-opt__chevron">›</span>
+          </button>
+          <button class="pay-opt" id="cryptoOptEth" type="button">
+            <span class="pay-opt__icon">Ξ</span>
+            <div class="pay-opt__body">
+              <strong>Ethereum</strong>
+              <span>ETH · підтвердження адміном</span>
+            </div>
+            <span class="pay-opt__chevron">›</span>
+          </button>
+          <button class="pay-opt" id="cryptoOptTrc" type="button">
+            <span class="pay-opt__icon">💵</span>
+            <div class="pay-opt__body">
+              <strong>USDT</strong>
+              <span>TRC-20 · підтвердження адміном</span>
+            </div>
+            <span class="pay-opt__chevron">›</span>
+          </button>
+          <button class="pay-opt" id="cryptoOptErc" type="button">
+            <span class="pay-opt__icon">💵</span>
+            <div class="pay-opt__body">
+              <strong>USDT</strong>
+              <span>ERC-20 · підтвердження адміном</span>
+            </div>
+            <span class="pay-opt__chevron">›</span>
+          </button>
+        </div>
+        <button class="pay-sheet__cancel" id="cryptoSheetCancel" type="button">← Назад</button>
+      </div>
+    </div>
+
+    <!-- ── Crypto manual (admin confirm) sheet ── -->
+    <div class="pay-sheet" id="cryptoManualSheet" aria-hidden="true">
+      <div class="pay-sheet__bd" id="cryptoManualSheetBd"></div>
+      <div class="pay-sheet__box">
+        <div class="pay-sheet__pill"></div>
+        <h3 class="pay-sheet__h" id="cryptoManualTitle">Оплата криптою</h3>
+        <div class="card-detail">
+          <p class="crypto-manual__network" id="cryptoManualNetwork"></p>
+          <p class="card-detail__note">Надішли скрін або txid оплати адміну в Telegram — доступ видається вручну після перевірки.</p>
+          <a class="btn btn--primary btn--sm" id="cryptoManualTgBtn" href="#" target="_blank" rel="noreferrer noopener">✈️ Написати адміну</a>
+        </div>
+        <button class="pay-sheet__cancel" id="cryptoManualCancel" type="button">← Назад</button>
       </div>
     </div>
 

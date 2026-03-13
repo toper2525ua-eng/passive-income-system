@@ -727,8 +727,38 @@ document.querySelector('#paySheetCancel')?.addEventListener('click', closePayShe
 
 document.querySelector('#payOptCrypto')?.addEventListener('click', () => {
   closePaySheet();
-  setTimeout(openTonSheet, 50);
+  setTimeout(openCryptoSheet, 50);
 });
+
+/* ─── Crypto submenu sheet ─── */
+function openCryptoSheet() {
+  document.querySelector('#cryptoSheet')?.removeAttribute('aria-hidden');
+}
+function closeCryptoSheet() {
+  document.querySelector('#cryptoSheet')?.setAttribute('aria-hidden', 'true');
+}
+function openCryptoManual(title, network) {
+  document.querySelector('#cryptoManualTitle').textContent = title;
+  document.querySelector('#cryptoManualNetwork').textContent = network;
+  const tgBtn = document.querySelector('#cryptoManualTgBtn');
+  if (tgBtn) { tgBtn.href = appConfig.links.telegram || '#'; }
+  document.querySelector('#cryptoManualSheet')?.removeAttribute('aria-hidden');
+}
+function closeCryptoManual() {
+  document.querySelector('#cryptoManualSheet')?.setAttribute('aria-hidden', 'true');
+}
+
+document.querySelector('#cryptoSheetBd')?.addEventListener('click', closeCryptoSheet);
+document.querySelector('#cryptoSheetCancel')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(openPaySheet, 50); });
+
+document.querySelector('#cryptoOptTon')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(openTonSheet, 50); });
+document.querySelector('#cryptoOptBtc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('Bitcoin · BTC', 'Мережа: Bitcoin (BTC)'), 50); });
+document.querySelector('#cryptoOptEth')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('Ethereum · ETH', 'Мережа: Ethereum (ERC-20)'), 50); });
+document.querySelector('#cryptoOptTrc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · TRC-20', 'Мережа: TRON (TRC-20)'), 50); });
+document.querySelector('#cryptoOptErc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · ERC-20', 'Мережа: Ethereum (ERC-20)'), 50); });
+
+document.querySelector('#cryptoManualSheetBd')?.addEventListener('click', closeCryptoManual);
+document.querySelector('#cryptoManualCancel')?.addEventListener('click', () => { closeCryptoManual(); setTimeout(openCryptoSheet, 50); });
 
 document.querySelector('#payOptCard')?.addEventListener('click', () => {
   const card = localStorage.getItem('pi_card');

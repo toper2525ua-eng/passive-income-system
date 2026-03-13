@@ -582,6 +582,16 @@ button, input { font: inherit; }
 
 .pay-opt__chevron { font-size: 1.4rem; color: var(--muted); flex-shrink: 0; }
 
+.crypto-auto-badge {
+  display: inline-block; font-size: .65rem; font-weight: 700; letter-spacing: .04em;
+  background: #1a7a4a; color: #fff; border-radius: 4px;
+  padding: 1px 5px; margin-left: 5px; vertical-align: middle;
+}
+.crypto-manual__network {
+  font-size: .9rem; font-weight: 600; color: var(--fg);
+  margin: 0 0 10px; text-align: center;
+}
+
 .pay-opt__badge {
   flex-shrink: 0;
   padding: 4px 10px; border-radius: 999px;
