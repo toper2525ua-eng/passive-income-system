@@ -752,10 +752,8 @@ document.querySelector('#cryptoSheetBd')?.addEventListener('click', closeCryptoS
 document.querySelector('#cryptoSheetCancel')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(openPaySheet, 50); });
 
 document.querySelector('#cryptoOptTon')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(openTonSheet, 50); });
-document.querySelector('#cryptoOptBtc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('Bitcoin · BTC', 'Мережа: Bitcoin (BTC)'), 50); });
-document.querySelector('#cryptoOptEth')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('Ethereum · ETH', 'Мережа: Ethereum (ERC-20)'), 50); });
 document.querySelector('#cryptoOptTrc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · TRC-20', 'Мережа: TRON (TRC-20)'), 50); });
-document.querySelector('#cryptoOptErc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · ERC-20', 'Мережа: Ethereum (ERC-20)'), 50); });
+document.querySelector('#cryptoOptBep')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · BEP-20', 'Мережа: BNB Smart Chain (BEP-20)'), 50); });
 
 document.querySelector('#cryptoManualSheetBd')?.addEventListener('click', closeCryptoManual);
 document.querySelector('#cryptoManualCancel')?.addEventListener('click', () => { closeCryptoManual(); setTimeout(openCryptoSheet, 50); });
