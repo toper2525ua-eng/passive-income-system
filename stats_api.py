@@ -232,19 +232,20 @@ def handle_chat_member_update(update):
     cm   = update.get("chat_member") or update.get("my_chat_member", {})
     if not cm:
         return
-    chat     = cm.get("chat", {})
-    chat_id  = str(chat.get("id", ""))
-    new_mem  = cm.get("new_chat_member", {})
-    old_mem  = cm.get("old_chat_member", {})
-    user     = new_mem.get("user", {})
-    uid      = str(user.get("id", ""))
-    status   = new_mem.get("status", "")
+    chat       = cm.get("chat", {})
+    chat_id    = str(chat.get("id", ""))
+    new_mem    = cm.get("new_chat_member", {})
+    old_mem    = cm.get("old_chat_member", {})
+    user       = new_mem.get("user", {})
+    uid        = str(user.get("id", ""))
+    status     = new_mem.get("status", "")
     old_status = old_mem.get("status", "")
 
     # Bot itself was added as admin → save channel_id
     if uid == BOT_ID:
         if status in ("administrator", "member"):
             set_cfg("channel_id", chat_id)
+            tg_send(OWNER_ID, f"✅ Бот доданий як адмін каналу\nChannel ID збережено: <code>{chat_id}</code>")
         return
 
     if not uid or not status:
@@ -255,11 +256,10 @@ def handle_chat_member_update(update):
     joined_at  = datetime.now().isoformat() if status == "member" else ""
     save_member(uid, username, first_name, status, joined_at)
 
-    # New join (was not member before, now is member)
-    was_outside = old_status in ("left", "kicked", "")
-    if status == "member" and was_outside:
-        conn      = get_db()
-        has_paid  = conn.execute(
+    # Notify on any new join (member or creator status, from any previous state)
+    if status in ("member", "creator", "administrator") and old_status in ("left", "kicked", ""):
+        conn     = get_db()
+        has_paid = conn.execute(
             "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
         ).fetchone() is not None
         conn.close()
@@ -268,6 +268,16 @@ def handle_chat_member_update(update):
 
 def poll_bot():
     offset = 0
+    # Notify owner that bot started
+    try:
+        channel_id = get_cfg("channel_id") or "не встановлено"
+        tg_send(OWNER_ID,
+            f"🤖 <b>Бот запущено</b>\n"
+            f"Channel ID: <code>{channel_id}</code>\n"
+            f"Слухаю chat_member оновлення…"
+        )
+    except Exception:
+        pass
     while True:
         try:
             resp = req.get(
@@ -300,6 +310,20 @@ def poll_bot():
                     handle_setwallet(chat_id, text)
                 elif text.startswith("/setchannel") and chat_id:
                     handle_setchannel(chat_id, text)
+                elif text.startswith("/test") and chat_id:
+                    if str(chat_id) == OWNER_ID:
+                        channel_id = get_cfg("channel_id") or "не встановлено"
+                        conn = get_db()
+                        members_count = conn.execute("SELECT COUNT(*) as c FROM channel_members").fetchone()["c"]
+                        orders_count  = conn.execute("SELECT COUNT(*) as c FROM orders WHERE status='paid'").fetchone()["c"]
+                        conn.close()
+                        tg_send(chat_id,
+                            f"✅ <b>Бот працює</b>\n\n"
+                            f"Channel ID: <code>{channel_id}</code>\n"
+                            f"Підписників в БД: {members_count}\n"
+                            f"Оплачених замовлень: {orders_count}\n\n"
+                            f"Слухаю: message, chat_member, my_chat_member, callback_query"
+                        )
         except Exception:
             time.sleep(5)
 
