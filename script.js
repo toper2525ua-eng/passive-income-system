@@ -1035,7 +1035,9 @@ let receiptImageBase64 = null;
 let receiptNetworkCtx  = '';   // e.g. 'Мережа: TRON (TRC-20)'
 
 function openReceiptSheet(networkCtx) {
-  receiptNetworkCtx = networkCtx || '';
+  receiptNetworkCtx = typeof networkCtx === 'string' ? networkCtx : '';
+  closeCardSheet();
+  closeCryptoManual();
   // Reset form
   const txt  = document.querySelector('#receiptText');
   const img  = document.querySelector('#receiptPhotoImg');
@@ -1055,7 +1057,7 @@ function closeReceiptSheet() {
   document.querySelector('#receiptSheet')?.setAttribute('aria-hidden', 'true');
 }
 
-document.querySelector('#cardReceiptBtn')?.addEventListener('click', openReceiptSheet);
+document.querySelector('#cardReceiptBtn')?.addEventListener('click', () => openReceiptSheet(''));
 document.querySelector('#receiptSheetBd')?.addEventListener('click', closeReceiptSheet);
 document.querySelector('#receiptSheetCancel')?.addEventListener('click', () => {
   closeReceiptSheet();
