@@ -280,9 +280,9 @@ def poll_bot():
         pass
     while True:
         try:
-            resp = req.get(
+            resp = req.post(
                 f"{TG_API}/getUpdates",
-                params={
+                json={
                     "offset": offset,
                     "timeout": 30,
                     "allowed_updates": ["message", "chat_member", "my_chat_member", "callback_query"],
