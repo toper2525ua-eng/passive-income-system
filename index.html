@@ -333,7 +333,7 @@
             <button class="copy-btn" id="copyCardBtn" type="button">Копіювати</button>
           </div>
           <p class="card-detail__note">Після оплати — надішли скрін підтвердження в Telegram</p>
-          <a class="btn btn--ghost btn--sm" id="cardTgBtn" href="#" target="_blank" rel="noreferrer noopener">✈️ Написати в Telegram</a>
+          <button class="btn btn--ghost btn--sm" id="cardReceiptBtn" type="button">📎 Надіслати квитанцію</button>
         </div>
         <button class="pay-sheet__cancel" id="cardSheetCancel" type="button">← Назад</button>
       </div>
@@ -466,6 +466,29 @@
           <p class="ton-success__sub">Перевір Telegram — доступ вже там 👆</p>
           <button class="ton-verify-btn" id="tonSuccessClose" type="button">Закрити</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ── Receipt sheet ── -->
+    <div class="receipt-sheet" id="receiptSheet" aria-hidden="true">
+      <div class="receipt-sheet__bd" id="receiptSheetBd"></div>
+      <div class="receipt-sheet__box">
+        <div class="pay-sheet__pill"></div>
+        <h3 class="pay-sheet__h">Надіслати квитанцію</h3>
+        <div class="receipt-form">
+          <textarea class="receipt-textarea" id="receiptText" placeholder="Коментар (необов'язково)…" rows="3"></textarea>
+          <div class="receipt-photo-zone" id="receiptPhotoZone">
+            <input type="file" id="receiptFileInput" accept="image/*" style="display:none" />
+            <div class="receipt-photo-placeholder" id="receiptPhotoPlaceholder">
+              <span class="receipt-photo-icon">📎</span>
+              <span>Прикріпити скріншот оплати</span>
+            </div>
+            <img class="receipt-photo-img" id="receiptPhotoImg" src="" alt="" style="display:none" />
+          </div>
+          <button class="btn btn--primary" id="receiptSendBtn" type="button">✈️ Відправити квитанцію</button>
+          <p class="config-hint" id="receiptMsg"></p>
+        </div>
+        <button class="pay-sheet__cancel" id="receiptSheetCancel" type="button">← Назад</button>
       </div>
     </div>
 

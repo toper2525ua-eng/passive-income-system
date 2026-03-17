@@ -155,10 +155,9 @@ def handle_callback_query(update):
     channel_id = get_cfg("channel_id")
 
     if data.startswith("apr_"):
+        # Approve channel join
         uid = data[4:]
-        # Save as confirmed member
         save_member(uid, "", "", "member")
-        # If no paid order, create manual record
         conn = get_db()
         paid = conn.execute(
             "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
@@ -175,6 +174,7 @@ def handle_callback_query(update):
         tg_edit(chat_id, msg_id, orig_text + "\n\n✅ <b>Підтверджено</b>")
 
     elif data.startswith("kck_"):
+        # Kick from channel
         uid = data[4:]
         if channel_id:
             try:
@@ -184,6 +184,47 @@ def handle_callback_query(update):
                 pass
         save_member(uid, "", "", "kicked")
         tg_edit(chat_id, msg_id, orig_text + "\n\n🚫 <b>Видалено з каналу</b>")
+
+    elif data.startswith("cpay_"):
+        # Confirm card payment → mark paid + send access link
+        uid = data[5:]
+        conn = get_db()
+        paid = conn.execute(
+            "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
+        ).fetchone()
+        if not paid:
+            conn.execute(
+                "INSERT INTO orders (id, tg_user_id, amount_usdt, memo, status, created_at, expires_at, verified_at) "
+                "VALUES (?,?,?,?,'paid',?,?,?)",
+                (str(uuid.uuid4()), uid, 0, "card-receipt",
+                 datetime.now().isoformat(), datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            conn.commit()
+        conn.close()
+        access_link = get_cfg("ton_access_link")
+        if access_link and uid:
+            tg_send(uid,
+                "✅ <b>Оплату підтверджено!</b>\n\n"
+                "Ось твоє посилання для доступу до системи 👇\n"
+                f"{access_link}"
+            )
+        tg_edit(chat_id, msg_id, orig_text + "\n\n✅ <b>Оплату підтверджено, доступ надіслано</b>")
+
+    elif data.startswith("decl_"):
+        # Decline payment
+        uid = data[5:]
+        tg_send(uid,
+            "❌ <b>Оплату не підтверджено</b>\n\n"
+            "Будь ласка, надішли правильний скріншот або зв'яжись з адміном."
+        )
+        tg_edit(chat_id, msg_id, orig_text + "\n\n❌ <b>Відхилено</b>")
+
+    elif data.startswith("banu_"):
+        # Ban user from bot interactions (blacklist in DB)
+        uid = data[5:]
+        set_cfg(f"banned_{uid}", "1")
+        tg_send(uid, "⛔ Вас заблоковано. Зверніться до адміна.")
+        tg_edit(chat_id, msg_id, orig_text + "\n\n⛔ <b>Користувача заблоковано</b>")
 
 
 def handle_chat_member_update(update):
@@ -626,6 +667,76 @@ def set_links_config():
         set_cfg("links_channel",  data["channel"].strip())
     if "channel_id" in data and data["channel_id"].strip():
         set_cfg("channel_id", data["channel_id"].strip())
+    return jsonify({"ok": True})
+
+
+# ── Card payment receipt ─────────────────────────────────────────────────────
+
+@app.route("/api/receipt", methods=["POST", "OPTIONS"])
+def submit_receipt():
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True})
+    data     = request.get_json(silent=True) or {}
+    uid      = str(data.get("uid", "")).strip()
+    name     = data.get("name", "Невідомий")
+    username = data.get("username", "")
+    text     = data.get("text", "").strip()
+    image_b64 = data.get("image", "")  # data:image/...;base64,...
+
+    # Check banned
+    if uid and get_cfg(f"banned_{uid}") == "1":
+        return jsonify({"error": "banned"}), 403
+
+    name_str = name
+    if username:
+        name_str += f" (@{username})"
+
+    conn     = get_db()
+    has_paid = conn.execute(
+        "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
+    ).fetchone() is not None
+    conn.close()
+
+    paid_line = "✅ Оплата вже є в системі" if has_paid else "❓ Нова оплата"
+    caption = (
+        f"💳 <b>Квитанція про оплату</b>\n\n"
+        f"Від: {name_str}\n"
+        f"ID: <code>{uid}</code>\n"
+        f"Статус: {paid_line}"
+    )
+    if text:
+        caption += f"\n\nКоментар: {text}"
+
+    markup = {"inline_keyboard": [[
+        {"text": "✅ Підтвердити", "callback_data": f"cpay_{uid}"},
+        {"text": "❌ Відхилити",   "callback_data": f"decl_{uid}"},
+        {"text": "⛔ Заблокувати", "callback_data": f"banu_{uid}"},
+    ]]}
+
+    admin_ids = get_all_admin_ids()
+
+    if image_b64 and "base64," in image_b64:
+        # Decode and send as photo
+        import base64 as b64mod
+        header, encoded = image_b64.split("base64,", 1)
+        img_bytes = b64mod.b64decode(encoded)
+        for admin_id in admin_ids:
+            try:
+                import json as _json
+                req.post(
+                    f"{TG_API}/sendPhoto",
+                    data={"chat_id": admin_id, "caption": caption,
+                          "parse_mode": "HTML",
+                          "reply_markup": _json.dumps(markup)},
+                    files={"photo": ("receipt.jpg", img_bytes, "image/jpeg")},
+                    timeout=15,
+                )
+            except Exception:
+                pass
+    else:
+        for admin_id in admin_ids:
+            tg_send(admin_id, caption, markup)
+
     return jsonify({"ok": True})
 
 

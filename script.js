@@ -698,13 +698,6 @@ function openCardSheet() {
   const card = localStorage.getItem('pi_card') || '';
   const display = document.querySelector('#cardNumDisplay');
   if (display) display.textContent = card || '—';
-  const tgBtn = document.querySelector('#cardTgBtn');
-  if (tgBtn) {
-    const tg = appConfig.links.telegram;
-    tgBtn.href = tg || '#';
-    tgBtn.classList.toggle('is-disabled', !tg);
-    if (tg) { tgBtn.removeAttribute('aria-disabled'); }
-  }
   cardSheet?.removeAttribute('aria-hidden');
 }
 
@@ -957,6 +950,93 @@ function renderAdminScreenshots() {
     });
   });
 }
+
+/* ─── Receipt sheet ─── */
+let receiptImageBase64 = null;
+
+function openReceiptSheet() {
+  closeCardSheet();
+  // Reset form
+  const txt = document.querySelector('#receiptText');
+  const img = document.querySelector('#receiptPhotoImg');
+  const ph  = document.querySelector('#receiptPhotoPlaceholder');
+  const msg = document.querySelector('#receiptMsg');
+  if (txt) txt.value = '';
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  if (ph)  ph.style.display = '';
+  if (msg) msg.textContent = '';
+  receiptImageBase64 = null;
+  document.querySelector('#receiptSheet')?.removeAttribute('aria-hidden');
+}
+
+function closeReceiptSheet() {
+  document.querySelector('#receiptSheet')?.setAttribute('aria-hidden', 'true');
+}
+
+document.querySelector('#cardReceiptBtn')?.addEventListener('click', openReceiptSheet);
+document.querySelector('#receiptSheetBd')?.addEventListener('click', closeReceiptSheet);
+document.querySelector('#receiptSheetCancel')?.addEventListener('click', () => {
+  closeReceiptSheet();
+  setTimeout(openCardSheet, 50);
+});
+
+// Photo zone click → open file picker
+document.querySelector('#receiptPhotoZone')?.addEventListener('click', () => {
+  document.querySelector('#receiptFileInput')?.click();
+});
+
+document.querySelector('#receiptFileInput')?.addEventListener('change', e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    receiptImageBase64 = ev.target.result; // data:image/...;base64,...
+    const img = document.querySelector('#receiptPhotoImg');
+    const ph  = document.querySelector('#receiptPhotoPlaceholder');
+    if (img) { img.src = receiptImageBase64; img.style.display = 'block'; }
+    if (ph)  ph.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+document.querySelector('#receiptSendBtn')?.addEventListener('click', async () => {
+  const btn  = document.querySelector('#receiptSendBtn');
+  const msg  = document.querySelector('#receiptMsg');
+  const text = document.querySelector('#receiptText')?.value.trim() || '';
+
+  if (!receiptImageBase64) {
+    if (msg) { msg.textContent = '⚠️ Прикріпи скріншот оплати'; msg.style.color = 'var(--warm)'; }
+    return;
+  }
+
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const uid    = tgUser?.id ? String(tgUser.id) : '';
+  const name   = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(' ') || 'Невідомий';
+  const uname  = tgUser?.username || '';
+
+  if (btn) { btn.textContent = 'Відправляємо…'; btn.classList.add('is-disabled'); }
+  if (msg) { msg.textContent = ''; msg.style.color = ''; }
+
+  try {
+    const res  = await fetch(`${API_BASE}/receipt`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ uid, name, username: uname, text, image: receiptImageBase64 }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      if (msg) { msg.textContent = '✓ Квитанцію відправлено! Очікуй підтвердження.'; msg.style.color = 'var(--accent)'; }
+      if (btn) btn.textContent = '✓ Відправлено';
+      setTimeout(closeReceiptSheet, 2500);
+    } else {
+      throw new Error(data.error || 'error');
+    }
+  } catch (e) {
+    if (msg) { msg.textContent = '✗ Помилка. Спробуй ще раз.'; msg.style.color = '#f87171'; }
+    if (btn) { btn.textContent = '✈️ Відправити квитанцію'; btn.classList.remove('is-disabled'); }
+  }
+});
 
 /* ─── Channel members ─── */
 async function loadChannelMembers(q = '') {
