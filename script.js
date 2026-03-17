@@ -845,6 +845,7 @@ document.querySelector('#saveConfig')?.addEventListener('click', async () => {
     payment:  document.querySelector('#cfgPayment').value.trim(),
     bybit:    document.querySelector('#cfgBybit').value.trim(),
     card:     document.querySelector('#cfgCard')?.value.trim() || '',
+    channel:  document.querySelector('#cfgChannelUsername')?.value.trim() || '',
   };
   const msg = document.querySelector('#configMsg');
   try {
@@ -864,10 +865,16 @@ document.querySelector('#saveChannelBtn')?.addEventListener('click', async () =>
   const link  = document.querySelector('#cfgChannelUsername')?.value.trim() || '';
   const msg   = document.querySelector('#channelMsg');
   try {
+    // Load current config first so we don't overwrite other fields
+    let current = {};
+    try {
+      const r = await fetch(`${API_BASE}/config/links?key=${STATS_KEY}`);
+      current = await r.json();
+    } catch (_) {}
     await fetch(`${API_BASE}/config/links?key=${STATS_KEY}`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ channel: link }),
+      body:    JSON.stringify({ ...current, channel: link }),
     });
     updateChannelStatus(link);
     if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
