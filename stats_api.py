@@ -536,22 +536,28 @@ def get_channel_members():
 
 @app.route("/api/channel/sync", methods=["POST"])
 def sync_channel_members():
-    """Check all paid users via getChatMember and update their status in DB."""
+    """Check all known users (any order status) via getChatMember."""
     if request.args.get("key") != ADMIN_KEY:
         return jsonify({"error": "unauthorized"}), 401
     channel_id = get_cfg("channel_id")
     if not channel_id:
-        return jsonify({"error": "channel_id not set — add bot as admin first"}), 400
+        return jsonify({"error": "channel_id not set — введи ID каналу в налаштуваннях"}), 400
 
     conn       = get_db()
-    paid_users = conn.execute(
-        "SELECT DISTINCT tg_user_id FROM orders WHERE status='paid'"
+    # All users who ever had any order
+    all_users  = conn.execute(
+        "SELECT DISTINCT tg_user_id FROM orders"
+    ).fetchall()
+    # Plus anyone already tracked
+    tracked    = conn.execute(
+        "SELECT DISTINCT tg_user_id FROM channel_members"
     ).fetchall()
     conn.close()
 
+    user_ids = {r["tg_user_id"] for r in all_users} | {r["tg_user_id"] for r in tracked}
+
     checked = 0
-    for row in paid_users:
-        uid = row["tg_user_id"]
+    for uid in user_ids:
         try:
             r    = req.get(f"{TG_API}/getChatMember",
                            params={"chat_id": channel_id, "user_id": uid}, timeout=6)
@@ -560,9 +566,9 @@ def sync_channel_members():
                 continue
             member     = data["result"]
             status     = member.get("status", "left")
-            user       = member.get("user", {})
-            username   = user.get("username", "")
-            first_name = user.get("first_name", "")
+            user_obj   = member.get("user", {})
+            username   = user_obj.get("username", "")
+            first_name = user_obj.get("first_name", "")
             save_member(uid, username, first_name, status)
             checked += 1
         except Exception:

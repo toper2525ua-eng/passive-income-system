@@ -995,17 +995,24 @@ function renderSubsList(members) {
 }
 
 document.querySelector('#subsSyncBtn')?.addEventListener('click', async () => {
-  const btn = document.querySelector('#subsSyncBtn');
-  if (btn) btn.style.opacity = '.4';
+  const btn   = document.querySelector('#subsSyncBtn');
+  const listEl = document.querySelector('#subsList');
+  if (btn) { btn.style.opacity = '.4'; btn.style.pointerEvents = 'none'; btn.textContent = '⏳'; }
+  if (listEl) listEl.innerHTML = '<p class="admin-list-empty">Синхронізація…</p>';
   try {
     const res  = await fetch(`${API_BASE}/channel/sync?key=${STATS_KEY}`, { method: 'POST' });
     const data = await res.json();
-    if (data.error) { alert('⚠️ ' + data.error); return; }
+    if (data.error) {
+      if (listEl) listEl.innerHTML = `<p class="admin-list-empty" style="color:var(--warm)">⚠️ ${data.error}</p>`;
+      return;
+    }
     renderSubsList(data.members || []);
+    const msg = document.querySelector('#channelMsg');
+    if (msg) { msg.textContent = `✓ Перевірено ${data.checked} користувачів`; setTimeout(() => { msg.textContent = ''; }, 3000); }
   } catch (e) {
-    alert('Помилка синхронізації');
+    if (listEl) listEl.innerHTML = '<p class="admin-list-empty" style="color:var(--warm)">Помилка з\'єднання</p>';
   } finally {
-    if (btn) btn.style.opacity = '';
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; btn.textContent = '↻'; }
   }
 });
 
