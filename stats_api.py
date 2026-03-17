@@ -31,6 +31,37 @@ def tg_send(chat_id, text, reply_markup=None):
         pass
 
 
+def tg_edit(chat_id, message_id, text):
+    try:
+        req.post(f"{TG_API}/editMessageText", json={
+            "chat_id": chat_id, "message_id": message_id,
+            "text": text, "parse_mode": "HTML"
+        }, timeout=8)
+    except Exception:
+        pass
+
+
+def tg_answer_cb(cq_id, text=""):
+    try:
+        req.post(f"{TG_API}/answerCallbackQuery",
+                 json={"callback_query_id": cq_id, "text": text}, timeout=5)
+    except Exception:
+        pass
+
+
+def get_all_admin_ids():
+    """Return list of numeric admin IDs (including owner)."""
+    conn    = get_db()
+    entries = [r["entry"] for r in conn.execute("SELECT entry FROM admins").fetchall()]
+    conn.close()
+    ids = [OWNER_ID]
+    for e in entries:
+        e = e.strip().lstrip("@")
+        if e.lstrip("-").isdigit() and e != OWNER_ID:
+            ids.append(e)
+    return ids
+
+
 def handle_start(chat_id, first_name):
     name = first_name or "друже"
     text = (
@@ -83,6 +114,78 @@ def handle_setwallet(chat_id, text):
     )
 
 
+def notify_admins_new_member(uid, first_name, username, channel_id, has_paid):
+    """Send notification to all admins when someone joins the channel."""
+    name_str = first_name or (f"@{username}" if username else f"ID {uid}")
+    if username:
+        name_str += f" (@{username})"
+    paid_line = "✅ Оплата знайдена в системі" if has_paid else "❌ Оплати не знайдено"
+    text = (
+        f"👤 <b>Новий учасник каналу</b>\n\n"
+        f"Ім'я: {name_str}\n"
+        f"ID: <code>{uid}</code>\n"
+        f"Оплата: {paid_line}"
+    )
+    markup = {"inline_keyboard": [[
+        {"text": "✅ Підтвердити", "callback_data": f"apr_{uid}"},
+        {"text": "🚫 Видалити",    "callback_data": f"kck_{uid}"},
+    ]]}
+    for admin_id in get_all_admin_ids():
+        tg_send(admin_id, text, markup)
+
+
+def handle_callback_query(update):
+    cq      = update.get("callback_query", {})
+    cq_id   = cq.get("id")
+    data    = cq.get("data", "")
+    from_id = str(cq.get("from", {}).get("id", ""))
+    msg     = cq.get("message", {})
+    msg_id  = msg.get("message_id")
+    chat_id = str(msg.get("chat", {}).get("id", ""))
+    orig_text = msg.get("text", "")
+
+    tg_answer_cb(cq_id)
+
+    # Only admins can use buttons
+    admin_ids = get_all_admin_ids()
+    if from_id not in admin_ids:
+        tg_answer_cb(cq_id, "⛔ Немає доступу")
+        return
+
+    channel_id = get_cfg("channel_id")
+
+    if data.startswith("apr_"):
+        uid = data[4:]
+        # Save as confirmed member
+        save_member(uid, "", "", "member")
+        # If no paid order, create manual record
+        conn = get_db()
+        paid = conn.execute(
+            "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
+        ).fetchone()
+        if not paid:
+            conn.execute(
+                "INSERT INTO orders (id, tg_user_id, amount_usdt, memo, status, created_at, expires_at, verified_at) "
+                "VALUES (?,?,?,?,'paid',?,?,?)",
+                (str(uuid.uuid4()), uid, 0, "manual-confirm",
+                 datetime.now().isoformat(), datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            conn.commit()
+        conn.close()
+        tg_edit(chat_id, msg_id, orig_text + "\n\n✅ <b>Підтверджено</b>")
+
+    elif data.startswith("kck_"):
+        uid = data[4:]
+        if channel_id:
+            try:
+                req.post(f"{TG_API}/banChatMember",
+                         json={"chat_id": channel_id, "user_id": uid}, timeout=8)
+            except Exception:
+                pass
+        save_member(uid, "", "", "kicked")
+        tg_edit(chat_id, msg_id, orig_text + "\n\n🚫 <b>Видалено з каналу</b>")
+
+
 def handle_chat_member_update(update):
     """Track who joins or leaves the private channel."""
     cm   = update.get("chat_member") or update.get("my_chat_member", {})
@@ -91,9 +194,11 @@ def handle_chat_member_update(update):
     chat     = cm.get("chat", {})
     chat_id  = str(chat.get("id", ""))
     new_mem  = cm.get("new_chat_member", {})
+    old_mem  = cm.get("old_chat_member", {})
     user     = new_mem.get("user", {})
     uid      = str(user.get("id", ""))
     status   = new_mem.get("status", "")
+    old_status = old_mem.get("status", "")
 
     # Bot itself was added as admin → save channel_id
     if uid == BOT_ID:
@@ -109,6 +214,16 @@ def handle_chat_member_update(update):
     joined_at  = datetime.now().isoformat() if status == "member" else ""
     save_member(uid, username, first_name, status, joined_at)
 
+    # New join (was not member before, now is member)
+    was_outside = old_status in ("left", "kicked", "")
+    if status == "member" and was_outside:
+        conn      = get_db()
+        has_paid  = conn.execute(
+            "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
+        ).fetchone() is not None
+        conn.close()
+        notify_admins_new_member(uid, first_name, username, chat_id, has_paid)
+
 
 def poll_bot():
     offset = 0
@@ -119,7 +234,7 @@ def poll_bot():
                 params={
                     "offset": offset,
                     "timeout": 30,
-                    "allowed_updates": ["message", "chat_member", "my_chat_member"],
+                    "allowed_updates": ["message", "chat_member", "my_chat_member", "callback_query"],
                 },
                 timeout=35,
             )
@@ -129,6 +244,10 @@ def poll_bot():
                 # Chat member events
                 if "chat_member" in u or "my_chat_member" in u:
                     handle_chat_member_update(u)
+                    continue
+                # Callback query (button press)
+                if "callback_query" in u:
+                    handle_callback_query(u)
                     continue
                 msg     = u.get("message", {})
                 text    = msg.get("text", "")
