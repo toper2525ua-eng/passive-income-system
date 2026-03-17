@@ -399,8 +399,15 @@
         <h3 class="pay-sheet__h" id="cryptoManualTitle">Оплата криптою</h3>
         <div class="card-detail">
           <p class="crypto-manual__network" id="cryptoManualNetwork"></p>
-          <p class="card-detail__note">Надішли скрін або txid оплати адміну в Telegram — доступ видається вручну після перевірки.</p>
-          <a class="btn btn--primary btn--sm" id="cryptoManualTgBtn" href="#" target="_blank" rel="noreferrer noopener">✈️ Написати адміну</a>
+          <div class="crypto-manual__wallet-wrap">
+            <span class="crypto-manual__wallet-label">Адреса гаманця</span>
+            <div class="card-num-wrap" style="margin-top:6px">
+              <span class="card-num" id="cryptoManualWallet" style="font-size:.85rem">—</span>
+              <button class="copy-btn" id="cryptoManualCopyWallet" type="button">Копіювати</button>
+            </div>
+          </div>
+          <p class="card-detail__note">Відправ USDT на адресу вище, зроби скріншот підтвердження і надішли квитанцію нижче.</p>
+          <button class="btn btn--primary btn--sm" id="cryptoManualReceiptBtn" type="button">📎 Надіслати квитанцію</button>
         </div>
         <button class="pay-sheet__cancel" id="cryptoManualCancel" type="button">← Назад</button>
       </div>

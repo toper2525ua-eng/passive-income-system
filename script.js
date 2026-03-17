@@ -730,11 +730,25 @@ function openCryptoSheet() {
 function closeCryptoSheet() {
   document.querySelector('#cryptoSheet')?.setAttribute('aria-hidden', 'true');
 }
-function openCryptoManual(title, network) {
+let cryptoManualNetwork = '';
+
+function openCryptoManual(title, network, walletAddr) {
   document.querySelector('#cryptoManualTitle').textContent = title;
   document.querySelector('#cryptoManualNetwork').textContent = network;
-  const tgBtn = document.querySelector('#cryptoManualTgBtn');
-  if (tgBtn) { tgBtn.href = appConfig.links.telegram || '#'; }
+  cryptoManualNetwork = network;
+  // Wallet address
+  const walletEl = document.querySelector('#cryptoManualWallet');
+  const copyBtn  = document.querySelector('#cryptoManualCopyWallet');
+  const addr = walletAddr || localStorage.getItem('pi_trc_wallet') || '—';
+  if (walletEl) walletEl.textContent = addr;
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(addr).then(() => {
+        copyBtn.textContent = '✓';
+        setTimeout(() => { copyBtn.textContent = 'Копіювати'; }, 1800);
+      });
+    };
+  }
   document.querySelector('#cryptoManualSheet')?.removeAttribute('aria-hidden');
 }
 function closeCryptoManual() {
@@ -747,6 +761,11 @@ document.querySelector('#cryptoSheetCancel')?.addEventListener('click', () => { 
 document.querySelector('#cryptoOptTon')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(openTonSheet, 50); });
 document.querySelector('#cryptoOptTrc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · TRC-20', 'Мережа: TRON (TRC-20)'), 50); });
 document.querySelector('#cryptoOptBep')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · BEP-20', 'Мережа: BNB Smart Chain (BEP-20)'), 50); });
+
+document.querySelector('#cryptoManualReceiptBtn')?.addEventListener('click', () => {
+  closeCryptoManual();
+  setTimeout(() => openReceiptSheet(cryptoManualNetwork), 50);
+});
 
 document.querySelector('#cryptoManualSheetBd')?.addEventListener('click', closeCryptoManual);
 document.querySelector('#cryptoManualCancel')?.addEventListener('click', () => { closeCryptoManual(); setTimeout(openCryptoSheet, 50); });
@@ -1013,18 +1032,21 @@ async function checkAccessStatus() {
 
 /* ─── Receipt sheet ─── */
 let receiptImageBase64 = null;
+let receiptNetworkCtx  = '';   // e.g. 'Мережа: TRON (TRC-20)'
 
-function openReceiptSheet() {
-  closeCardSheet();
+function openReceiptSheet(networkCtx) {
+  receiptNetworkCtx = networkCtx || '';
   // Reset form
-  const txt = document.querySelector('#receiptText');
-  const img = document.querySelector('#receiptPhotoImg');
-  const ph  = document.querySelector('#receiptPhotoPlaceholder');
-  const msg = document.querySelector('#receiptMsg');
-  if (txt) txt.value = '';
-  if (img) { img.src = ''; img.style.display = 'none'; }
-  if (ph)  ph.style.display = '';
-  if (msg) msg.textContent = '';
+  const txt  = document.querySelector('#receiptText');
+  const img  = document.querySelector('#receiptPhotoImg');
+  const ph   = document.querySelector('#receiptPhotoPlaceholder');
+  const msg  = document.querySelector('#receiptMsg');
+  const head = document.querySelector('#receiptSheet .pay-sheet__h');
+  if (txt)  txt.value = '';
+  if (img)  { img.src = ''; img.style.display = 'none'; }
+  if (ph)   ph.style.display = '';
+  if (msg)  msg.textContent = '';
+  if (head) head.textContent = networkCtx ? `Квитанція · ${networkCtx.replace('Мережа: ', '')}` : 'Надіслати квитанцію';
   receiptImageBase64 = null;
   document.querySelector('#receiptSheet')?.removeAttribute('aria-hidden');
 }
@@ -1082,7 +1104,7 @@ document.querySelector('#receiptSendBtn')?.addEventListener('click', async () =>
     const res  = await fetch(`${API_BASE}/receipt`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ uid, name, username: uname, text, image: receiptImageBase64 }),
+      body:    JSON.stringify({ uid, name, username: uname, text, image: receiptImageBase64, network: receiptNetworkCtx }),
     });
     const data = await res.json();
     if (data.ok) {

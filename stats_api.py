@@ -681,6 +681,7 @@ def submit_receipt():
     name     = data.get("name", "Невідомий")
     username = data.get("username", "")
     text     = data.get("text", "").strip()
+    network  = data.get("network", "").strip()
     image_b64 = data.get("image", "")  # data:image/...;base64,...
 
     # Check banned
@@ -704,6 +705,8 @@ def submit_receipt():
         f"ID: <code>{uid}</code>\n"
         f"Статус: {paid_line}"
     )
+    if network:
+        caption += f"\nМережа: {network}"
     if text:
         caption += f"\n\nКоментар: {text}"
 
