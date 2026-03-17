@@ -806,8 +806,27 @@ async function loadConfig() {
     if (data.bybit)    document.querySelector('#cfgBybit').value    = data.bybit;
     const cfgCard = document.querySelector('#cfgCard');
     if (cfgCard && data.card) cfgCard.value = data.card;
+    // Channel
+    const cfgCh = document.querySelector('#cfgChannelUsername');
+    if (cfgCh && data.channel) cfgCh.value = data.channel;
+    updateChannelStatus(data.channel || '');
     applyConfig(data);
   } catch (e) {}
+}
+
+function updateChannelStatus(link) {
+  const dot   = document.querySelector('.subs-status-dot');
+  const label = document.querySelector('#subsChannelLabel');
+  if (!dot || !label) return;
+  if (link) {
+    dot.className   = 'subs-status-dot subs-status-dot--on';
+    label.textContent = 'Підключено';
+    label.style.color = 'var(--accent)';
+  } else {
+    dot.className   = 'subs-status-dot subs-status-dot--off';
+    label.textContent = 'Не підключено';
+    label.style.color = '';
+  }
 }
 
 function applyConfig(links) {
@@ -835,6 +854,22 @@ document.querySelector('#saveConfig')?.addEventListener('click', async () => {
       body:    JSON.stringify(links),
     });
     applyConfig(links);
+    if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+  } catch (e) {
+    if (msg) { msg.textContent = '✗ Помилка збереження'; setTimeout(() => { msg.textContent = ''; }, 3000); }
+  }
+});
+
+document.querySelector('#saveChannelBtn')?.addEventListener('click', async () => {
+  const link  = document.querySelector('#cfgChannelUsername')?.value.trim() || '';
+  const msg   = document.querySelector('#channelMsg');
+  try {
+    await fetch(`${API_BASE}/config/links?key=${STATS_KEY}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ channel: link }),
+    });
+    updateChannelStatus(link);
     if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
   } catch (e) {
     if (msg) { msg.textContent = '✗ Помилка збереження'; setTimeout(() => { msg.textContent = ''; }, 3000); }
