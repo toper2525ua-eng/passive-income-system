@@ -549,7 +549,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadConfig(); loadTonConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); }
+  if (tabId === 'admin') { loadConfig(); loadTonConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); loadChannelMembers(); }
 }
 
 /* ─── Event listeners ─── */
@@ -950,6 +950,61 @@ function renderAdminScreenshots() {
     });
   });
 }
+
+/* ─── Channel members ─── */
+async function loadChannelMembers(q = '') {
+  const listEl = document.querySelector('#subsList');
+  if (!listEl) return;
+  listEl.innerHTML = '<p class="admin-list-empty">Завантаження…</p>';
+  try {
+    const url = `${API_BASE}/channel/members?key=${STATS_KEY}${q ? '&q=' + encodeURIComponent(q) : ''}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    renderSubsList(data.members || []);
+  } catch (e) {
+    if (listEl) listEl.innerHTML = '<p class="admin-list-empty">Помилка завантаження</p>';
+  }
+}
+
+function renderSubsList(members) {
+  const listEl = document.querySelector('#subsList');
+  if (!listEl) return;
+  if (!members.length) {
+    listEl.innerHTML = '<p class="admin-list-empty">Підписників ще немає — натисни ↻ для синхронізації</p>';
+    return;
+  }
+  const activeStatuses = ['member', 'administrator', 'creator', 'restricted'];
+  listEl.innerHTML = members.map(m => {
+    const isActive = activeStatuses.includes(m.status);
+    const name     = m.first_name ? `${m.first_name}${m.username ? ' @' + m.username : ''}` : (m.username ? '@' + m.username : m.tg_user_id);
+    return `
+      <div class="subs-list-item">
+        <span class="subs-list-item__id">${name}<br><small style="opacity:.5;font-size:.75rem">${m.tg_user_id}</small></span>
+        <span class="subs-list-item__tag ${isActive ? 'subs-list-item__tag--active' : 'subs-list-item__tag--expired'}">
+          ${isActive ? 'в каналі' : m.status === 'left' ? 'вийшов' : 'кікнутий'}
+        </span>
+      </div>`;
+  }).join('');
+}
+
+document.querySelector('#subsSyncBtn')?.addEventListener('click', async () => {
+  const btn = document.querySelector('#subsSyncBtn');
+  if (btn) btn.style.opacity = '.4';
+  try {
+    const res  = await fetch(`${API_BASE}/channel/sync?key=${STATS_KEY}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.error) { alert('⚠️ ' + data.error); return; }
+    renderSubsList(data.members || []);
+  } catch (e) {
+    alert('Помилка синхронізації');
+  } finally {
+    if (btn) btn.style.opacity = '';
+  }
+});
+
+document.querySelector('#subsSearch')?.addEventListener('input', e => {
+  loadChannelMembers(e.target.value.trim());
+});
 
 /* ─── Admin: sub-tab switching ─── */
 document.querySelectorAll('.admin-tab[data-admin-tab]').forEach(tab => {

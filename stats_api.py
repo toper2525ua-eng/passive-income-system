@@ -15,6 +15,7 @@ import random
 import requests as req
 
 BOT_TOKEN = "8424430883:AAH6hMh8qqrgN3sRe-1QOfYOJ0xDs4dKuLU"
+BOT_ID    = "8424430883"
 SITE_URL  = "https://passiveincomesystem.website"
 TG_API    = f"https://api.telegram.org/bot{BOT_TOKEN}"
 TONAPI_KEY = os.environ.get("TONAPI_KEY", "")   # optional, for higher rate limits
@@ -65,18 +66,53 @@ def handle_setwallet(chat_id, text):
     )
 
 
+def handle_chat_member_update(update):
+    """Track who joins or leaves the private channel."""
+    cm   = update.get("chat_member") or update.get("my_chat_member", {})
+    if not cm:
+        return
+    chat     = cm.get("chat", {})
+    chat_id  = str(chat.get("id", ""))
+    new_mem  = cm.get("new_chat_member", {})
+    user     = new_mem.get("user", {})
+    uid      = str(user.get("id", ""))
+    status   = new_mem.get("status", "")
+
+    # Bot itself was added as admin → save channel_id
+    if uid == BOT_ID:
+        if status in ("administrator", "member"):
+            set_cfg("channel_id", chat_id)
+        return
+
+    if not uid or not status:
+        return
+
+    username   = user.get("username", "")
+    first_name = user.get("first_name", "")
+    joined_at  = datetime.now().isoformat() if status == "member" else ""
+    save_member(uid, username, first_name, status, joined_at)
+
+
 def poll_bot():
     offset = 0
     while True:
         try:
             resp = req.get(
                 f"{TG_API}/getUpdates",
-                params={"offset": offset, "timeout": 30},
+                params={
+                    "offset": offset,
+                    "timeout": 30,
+                    "allowed_updates": ["message", "chat_member", "my_chat_member"],
+                },
                 timeout=35,
             )
             updates = resp.json().get("result", [])
             for u in updates:
                 offset = u["update_id"] + 1
+                # Chat member events
+                if "chat_member" in u or "my_chat_member" in u:
+                    handle_chat_member_update(u)
+                    continue
                 msg     = u.get("message", {})
                 text    = msg.get("text", "")
                 chat_id = msg.get("chat", {}).get("id")
@@ -140,6 +176,16 @@ def init_db():
         )
     """)
     conn.execute("""
+        CREATE TABLE IF NOT EXISTS channel_members (
+            tg_user_id  TEXT PRIMARY KEY,
+            username    TEXT DEFAULT '',
+            first_name  TEXT DEFAULT '',
+            status      TEXT DEFAULT 'member',
+            joined_at   TEXT DEFAULT '',
+            updated_at  TEXT NOT NULL
+        )
+    """)
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS orders (
             id          TEXT PRIMARY KEY,
             tg_user_id  TEXT NOT NULL,
@@ -163,6 +209,23 @@ def get_cfg(key, default=""):
     row  = conn.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
     conn.close()
     return row["value"] if row else default
+
+def save_member(tg_user_id, username, first_name, status, joined_at=""):
+    conn = get_db()
+    now  = datetime.now().isoformat()
+    conn.execute("""
+        INSERT INTO channel_members (tg_user_id, username, first_name, status, joined_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(tg_user_id) DO UPDATE SET
+            username=excluded.username,
+            first_name=excluded.first_name,
+            status=excluded.status,
+            joined_at=CASE WHEN excluded.joined_at != '' THEN excluded.joined_at ELSE joined_at END,
+            updated_at=excluded.updated_at
+    """, (str(tg_user_id), username or "", first_name or "", status, joined_at, now))
+    conn.commit()
+    conn.close()
+
 
 def set_cfg(key, value):
     conn = get_db()
@@ -423,6 +486,73 @@ def set_links_config():
     if "channel" in data:
         set_cfg("links_channel",  data["channel"].strip())
     return jsonify({"ok": True})
+
+
+# ── Channel members ──────────────────────────────────────────────────────────
+
+@app.route("/api/channel/members", methods=["GET"])
+def get_channel_members():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    search = request.args.get("q", "").lower().strip()
+    conn   = get_db()
+    rows   = conn.execute(
+        "SELECT tg_user_id, username, first_name, status, joined_at, updated_at "
+        "FROM channel_members ORDER BY updated_at DESC"
+    ).fetchall()
+    conn.close()
+    members = [dict(r) for r in rows]
+    if search:
+        members = [
+            m for m in members
+            if search in m["tg_user_id"]
+            or search in (m["username"] or "").lower()
+            or search in (m["first_name"] or "").lower()
+        ]
+    return jsonify({"channel_id": get_cfg("channel_id"), "members": members})
+
+
+@app.route("/api/channel/sync", methods=["POST"])
+def sync_channel_members():
+    """Check all paid users via getChatMember and update their status in DB."""
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    channel_id = get_cfg("channel_id")
+    if not channel_id:
+        return jsonify({"error": "channel_id not set — add bot as admin first"}), 400
+
+    conn       = get_db()
+    paid_users = conn.execute(
+        "SELECT DISTINCT tg_user_id FROM orders WHERE status='paid'"
+    ).fetchall()
+    conn.close()
+
+    checked = 0
+    for row in paid_users:
+        uid = row["tg_user_id"]
+        try:
+            r    = req.get(f"{TG_API}/getChatMember",
+                           params={"chat_id": channel_id, "user_id": uid}, timeout=6)
+            data = r.json()
+            if not data.get("ok"):
+                continue
+            member     = data["result"]
+            status     = member.get("status", "left")
+            user       = member.get("user", {})
+            username   = user.get("username", "")
+            first_name = user.get("first_name", "")
+            save_member(uid, username, first_name, status)
+            checked += 1
+        except Exception:
+            pass
+
+    conn     = get_db()
+    all_rows = conn.execute(
+        "SELECT tg_user_id, username, first_name, status, joined_at, updated_at "
+        "FROM channel_members ORDER BY updated_at DESC"
+    ).fetchall()
+    conn.close()
+    return jsonify({"ok": True, "checked": checked, "members": [dict(r) for r in all_rows]})
 
 
 # ── Payment endpoints ────────────────────────────────────────────────────────
