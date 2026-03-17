@@ -951,6 +951,66 @@ function renderAdminScreenshots() {
   });
 }
 
+/* ─── Access status banner + polling ─── */
+const ACCESS_PENDING_KEY = 'pi_access_pending';
+let accessPollInterval   = null;
+
+function getTgUid() {
+  return String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '');
+}
+
+function showAccessBanner(confirmed = false, link = '') {
+  const banner  = document.querySelector('#accessBanner');
+  const waiting = document.querySelector('#accessBannerWaiting');
+  const ok      = document.querySelector('#accessBannerOk');
+  const linkEl  = document.querySelector('#accessBannerLink');
+  if (!banner) return;
+  banner.style.display = '';
+  if (confirmed) {
+    if (waiting) waiting.style.display = 'none';
+    if (ok)      ok.style.display      = 'flex';
+    if (linkEl && link) linkEl.href    = link;
+    localStorage.setItem(ACCESS_PENDING_KEY, 'confirmed');
+    stopAccessPoll();
+  } else {
+    if (waiting) waiting.style.display = 'flex';
+    if (ok)      ok.style.display      = 'none';
+    localStorage.setItem(ACCESS_PENDING_KEY, 'waiting');
+    startAccessPoll();
+  }
+}
+
+function startAccessPoll() {
+  if (accessPollInterval) return;
+  accessPollInterval = setInterval(checkAccessStatus, 5000);
+}
+
+function stopAccessPoll() {
+  if (accessPollInterval) { clearInterval(accessPollInterval); accessPollInterval = null; }
+}
+
+async function checkAccessStatus() {
+  const uid = getTgUid();
+  if (!uid) return;
+  try {
+    const res  = await fetch(`${API_BASE}/payment/status?uid=${uid}`);
+    const data = await res.json();
+    if (data.paid) showAccessBanner(true, data.access_link || '');
+  } catch (_) {}
+}
+
+// On load: restore banner state
+(function initAccessBanner() {
+  const state = localStorage.getItem(ACCESS_PENDING_KEY);
+  if (state === 'waiting') {
+    showAccessBanner(false);
+    checkAccessStatus(); // immediate check
+  } else if (state === 'confirmed') {
+    // re-fetch link and show confirmed
+    checkAccessStatus();
+  }
+})();
+
 /* ─── Receipt sheet ─── */
 let receiptImageBase64 = null;
 
@@ -1026,9 +1086,10 @@ document.querySelector('#receiptSendBtn')?.addEventListener('click', async () =>
     });
     const data = await res.json();
     if (data.ok) {
-      if (msg) { msg.textContent = '✓ Квитанцію відправлено! Очікуй підтвердження.'; msg.style.color = 'var(--accent)'; }
+      if (msg) { msg.textContent = '✓ Квитанцію відправлено!'; msg.style.color = 'var(--accent)'; }
       if (btn) btn.textContent = '✓ Відправлено';
-      setTimeout(closeReceiptSheet, 2500);
+      showAccessBanner(false);
+      setTimeout(closeReceiptSheet, 1800);
     } else {
       throw new Error(data.error || 'error');
     }

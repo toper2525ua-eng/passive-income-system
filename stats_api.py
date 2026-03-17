@@ -966,6 +966,22 @@ def pending_order():
     }})
 
 
+@app.route("/api/payment/status", methods=["GET"])
+def payment_status():
+    uid = request.args.get("uid", "").strip()
+    if not uid:
+        return jsonify({"paid": False})
+    conn  = get_db()
+    order = conn.execute(
+        "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
+    ).fetchone()
+    conn.close()
+    if order:
+        access_link = get_cfg("ton_access_link") or get_cfg("links_channel")
+        return jsonify({"paid": True, "access_link": access_link})
+    return jsonify({"paid": False})
+
+
 if __name__ == "__main__":
     init_db()
     threading.Thread(target=poll_bot, daemon=True).start()
