@@ -201,6 +201,11 @@
                   <span>Посилання на закритий канал</span>
                   <input class="config-input" id="cfgChannelUsername" type="text" placeholder="https://t.me/+..." autocomplete="off" />
                 </label>
+                <label class="config-label">
+                  <span>ID каналу <small style="font-weight:400">(напр. -1001234567890)</small></span>
+                  <input class="config-input" id="cfgChannelId" type="text" placeholder="-100..." autocomplete="off" />
+                </label>
+                <p class="config-hint config-hint--lock" style="display:block">💡 ID каналу: перешли будь-яке повідомлення з каналу боту <code>@userinfobot</code> або відправ <code>/setchannel -100...</code> нашому боту</p>
                 <button class="btn btn--primary btn--sm" id="saveChannelBtn" type="button">Зберегти канал</button>
                 <p class="config-hint" id="channelMsg"></p>
               </div>

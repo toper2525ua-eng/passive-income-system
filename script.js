@@ -809,21 +809,27 @@ async function loadConfig() {
     // Channel
     const cfgCh = document.querySelector('#cfgChannelUsername');
     if (cfgCh && data.channel) cfgCh.value = data.channel;
-    updateChannelStatus(data.channel || '');
+    const cfgChId = document.querySelector('#cfgChannelId');
+    if (cfgChId && data.channel_id) cfgChId.value = data.channel_id;
+    updateChannelStatus(data.channel || '', data.channel_id || '');
     applyConfig(data);
   } catch (e) {}
 }
 
-function updateChannelStatus(link) {
+function updateChannelStatus(link, channelId) {
   const dot   = document.querySelector('.subs-status-dot');
   const label = document.querySelector('#subsChannelLabel');
   if (!dot || !label) return;
-  if (link) {
-    dot.className   = 'subs-status-dot subs-status-dot--on';
+  if (link && channelId) {
+    dot.className     = 'subs-status-dot subs-status-dot--on';
     label.textContent = 'Підключено';
     label.style.color = 'var(--accent)';
+  } else if (link) {
+    dot.className     = 'subs-status-dot subs-status-dot--warn';
+    label.textContent = 'Потрібен ID каналу';
+    label.style.color = 'var(--warm)';
   } else {
-    dot.className   = 'subs-status-dot subs-status-dot--off';
+    dot.className     = 'subs-status-dot subs-status-dot--off';
     label.textContent = 'Не підключено';
     label.style.color = '';
   }
@@ -871,12 +877,13 @@ document.querySelector('#saveChannelBtn')?.addEventListener('click', async () =>
       const r = await fetch(`${API_BASE}/config/links?key=${STATS_KEY}`);
       current = await r.json();
     } catch (_) {}
+    const channelId = document.querySelector('#cfgChannelId')?.value.trim() || '';
     await fetch(`${API_BASE}/config/links?key=${STATS_KEY}`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ...current, channel: link }),
+      body:    JSON.stringify({ ...current, channel: link, channel_id: channelId }),
     });
-    updateChannelStatus(link);
+    updateChannelStatus(link, channelId);
     if (msg) { msg.textContent = '✓ Збережено'; setTimeout(() => { msg.textContent = ''; }, 2000); }
   } catch (e) {
     if (msg) { msg.textContent = '✗ Помилка збереження'; setTimeout(() => { msg.textContent = ''; }, 3000); }

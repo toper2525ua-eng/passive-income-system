@@ -47,6 +47,23 @@ def handle_start(chat_id, first_name):
     tg_send(chat_id, text, markup)
 
 
+def handle_setchannel(chat_id, text):
+    if str(chat_id) != OWNER_ID:
+        tg_send(chat_id, "⛔ Тільки власник може встановлювати канал.")
+        return
+    parts = text.strip().split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        current = get_cfg("channel_id") or "не встановлено"
+        tg_send(chat_id,
+            f"📡 Поточний канал ID:\n<code>{current}</code>\n\n"
+            "Щоб встановити:\n<code>/setchannel -100123456789</code>"
+        )
+        return
+    new_id = parts[1].strip()
+    set_cfg("channel_id", new_id)
+    tg_send(chat_id, f"✅ Channel ID збережено:\n<code>{new_id}</code>")
+
+
 def handle_setwallet(chat_id, text):
     if str(chat_id) != OWNER_ID:
         tg_send(chat_id, "⛔ Тільки власник може змінювати гаманець.")
@@ -121,6 +138,8 @@ def poll_bot():
                     handle_start(chat_id, first)
                 elif text.startswith("/setwallet") and chat_id:
                     handle_setwallet(chat_id, text)
+                elif text.startswith("/setchannel") and chat_id:
+                    handle_setchannel(chat_id, text)
         except Exception:
             time.sleep(5)
 
@@ -462,11 +481,12 @@ def get_links_config():
     if request.args.get("key") != ADMIN_KEY:
         return jsonify({"error": "unauthorized"}), 401
     return jsonify({
-        "telegram": get_cfg("links_telegram"),
-        "payment":  get_cfg("links_payment"),
-        "bybit":    get_cfg("links_bybit"),
-        "card":     get_cfg("links_card"),
-        "channel":  get_cfg("links_channel"),
+        "telegram":   get_cfg("links_telegram"),
+        "payment":    get_cfg("links_payment"),
+        "bybit":      get_cfg("links_bybit"),
+        "card":       get_cfg("links_card"),
+        "channel":    get_cfg("links_channel"),
+        "channel_id": get_cfg("channel_id"),
     })
 
 
@@ -485,6 +505,8 @@ def set_links_config():
         set_cfg("links_card",     data["card"].strip())
     if "channel" in data:
         set_cfg("links_channel",  data["channel"].strip())
+    if "channel_id" in data and data["channel_id"].strip():
+        set_cfg("channel_id", data["channel_id"].strip())
     return jsonify({"ok": True})
 
 
