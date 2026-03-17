@@ -1012,6 +1012,126 @@ button, input { font: inherit; }
 .ton-success__title { font-size: 1.2rem; font-weight: 800; color: var(--text); margin: 0 0 8px; }
 .ton-success__sub   { font-size: .9rem; color: var(--muted); margin: 0 0 20px; }
 
+/* ─── Admin sub-tabs ─── */
+.admin-tabs {
+  flex-shrink: 0;
+  display: flex; gap: 8px;
+  padding: 10px 16px;
+  background: rgba(8, 12, 10, .92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.admin-tab {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, .1);
+  background: rgba(255, 255, 255, .05);
+  color: var(--muted); font-size: .82rem; font-weight: 700;
+  cursor: pointer; text-align: center;
+  transition: background .18s, border-color .18s, color .18s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.admin-tab:active { opacity: .75; }
+.admin-tab.is-active {
+  background: var(--accent-soft);
+  border-color: rgba(34, 211, 165, .3);
+  color: var(--accent);
+}
+
+.admin-subpanel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+.admin-subpanel.is-active { display: flex; }
+
+/* ─── Subscriptions panel ─── */
+.subs-channel-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.subs-channel-status {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.subs-status-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+}
+.subs-status-dot--off  { background: rgba(237, 243, 239, .25); }
+.subs-status-dot--on   { background: var(--accent); box-shadow: 0 0 0 3px rgba(34,211,165,.2); }
+.subs-status-dot--warn { background: var(--warm); box-shadow: 0 0 0 3px rgba(240,168,48,.2); }
+
+.subs-status-label { font-size: .84rem; font-weight: 600; color: var(--muted); }
+
+.subs-instr {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: 3px solid rgba(255,255,255,.15);
+  border-radius: 10px;
+}
+.subs-instr__label {
+  display: block; font-size: .66rem; font-weight: 800;
+  color: var(--muted); letter-spacing: .08em; margin-bottom: 8px;
+}
+.subs-instr__list {
+  margin: 0; padding-left: 18px;
+  display: grid; gap: 5px;
+}
+.subs-instr__list li { font-size: .82rem; color: var(--muted); }
+
+.subs-stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+
+.subs-stat-card {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 12px;
+}
+.subs-stat-card strong {
+  font-size: 1.35rem; font-weight: 800; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.subs-stat-card span { font-size: .75rem; color: var(--muted); }
+
+.subs-search-row {
+  margin-bottom: 10px;
+}
+
+.subs-list {
+  display: grid; gap: 8px;
+}
+
+.subs-list-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: var(--r-sm);
+}
+
+.subs-list-item__id {
+  flex: 1; font-size: .85rem; font-weight: 600; color: var(--text);
+  font-feature-settings: "tnum";
+}
+
+.subs-list-item__tag {
+  font-size: .7rem; font-weight: 700; padding: 3px 8px;
+  border-radius: 999px; flex-shrink: 0;
+}
+.subs-list-item__tag--active  { background: rgba(34,211,165,.14); color: var(--accent); }
+.subs-list-item__tag--expired { background: rgba(200,40,40,.12); color: #f87171; }
+
 /* ─── Shot type tabs ─── */
 .shot-type-tabs {
   display: flex; gap: 6px;

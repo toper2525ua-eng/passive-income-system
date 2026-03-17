@@ -909,7 +909,17 @@ function renderAdminScreenshots() {
   });
 }
 
-/* ─── Admin: tab switching ─── */
+/* ─── Admin: sub-tab switching ─── */
+document.querySelectorAll('.admin-tab[data-admin-tab]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('is-active', t === tab));
+    document.querySelectorAll('.admin-subpanel').forEach(p => {
+      p.classList.toggle('is-active', p.id === `admin-subpanel-${tab.dataset.adminTab}`);
+    });
+  });
+});
+
+/* ─── Admin: shot-type tab switching ─── */
 document.querySelector('#shotTypeTabs')?.addEventListener('click', e => {
   const tab = e.target.closest('.shot-type-tab[data-shot-type]');
   if (!tab) return;

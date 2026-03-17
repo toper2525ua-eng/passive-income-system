@@ -85,6 +85,15 @@
 
         <!-- Tab: Адмін (hidden for non-admins) -->
         <div class="tab-panel" id="panel-admin">
+
+          <!-- Admin sub-tabs -->
+          <div class="admin-tabs">
+            <button class="admin-tab is-active" data-admin-tab="settings" type="button">⚙️ Налаштування</button>
+            <button class="admin-tab" data-admin-tab="subs" type="button">👥 Підписки</button>
+          </div>
+
+          <!-- Sub-panel: Settings -->
+          <div class="admin-subpanel is-active" id="admin-subpanel-settings">
           <div class="panel-content">
 
             <!-- Admins -->
@@ -170,6 +179,83 @@
             </section>
 
           </div>
+          </div><!-- /admin-subpanel-settings -->
+
+          <!-- Sub-panel: Subscriptions -->
+          <div class="admin-subpanel" id="admin-subpanel-subs">
+          <div class="panel-content">
+
+            <!-- Channel connection -->
+            <section class="admin-section">
+              <div class="admin-section-head">
+                <span class="admin-section-title">📡 Канал</span>
+              </div>
+              <div class="subs-channel-row">
+                <div class="subs-channel-status" id="subsChannelStatus">
+                  <span class="subs-status-dot subs-status-dot--off"></span>
+                  <span class="subs-status-label" id="subsChannelLabel">Не підключено</span>
+                </div>
+              </div>
+              <div class="config-form" style="margin-top:12px">
+                <label class="config-label">
+                  <span>Username каналу</span>
+                  <input class="config-input" id="cfgChannelUsername" type="text" placeholder="@mychannel або -100123456789" autocomplete="off" />
+                </label>
+                <button class="btn btn--primary btn--sm" id="saveChannelBtn" type="button">Зберегти канал</button>
+                <p class="config-hint" id="channelMsg"></p>
+              </div>
+              <div class="subs-instr">
+                <span class="subs-instr__label">ЯК ПІДКЛЮЧИТИ</span>
+                <ol class="subs-instr__list">
+                  <li>Додай бота як адміна каналу</li>
+                  <li>Введи username або ID каналу вище</li>
+                  <li>Бот почне перевіряти підписки автоматично</li>
+                </ol>
+              </div>
+            </section>
+
+            <!-- Stats -->
+            <section class="admin-section">
+              <div class="admin-section-head">
+                <span class="admin-section-title">📊 Статистика</span>
+                <button class="admin-refresh" id="subsRefreshBtn" type="button" title="Оновити">↻</button>
+              </div>
+              <div class="subs-stats-grid" id="subsStatsGrid">
+                <div class="subs-stat-card">
+                  <strong id="subsStatTotal">—</strong>
+                  <span>Всього підписок</span>
+                </div>
+                <div class="subs-stat-card">
+                  <strong id="subsStatActive">—</strong>
+                  <span>Активних</span>
+                </div>
+                <div class="subs-stat-card">
+                  <strong id="subsStatExpired">—</strong>
+                  <span>Прострочених</span>
+                </div>
+                <div class="subs-stat-card">
+                  <strong id="subsStatRevenue">—</strong>
+                  <span>Зібрано $</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Subscribers list -->
+            <section class="admin-section">
+              <div class="admin-section-head">
+                <span class="admin-section-title">👤 Підписники</span>
+              </div>
+              <div class="subs-search-row">
+                <input class="config-input" id="subsSearch" type="text" placeholder="Пошук по ID або @нікнейму…" autocomplete="off" />
+              </div>
+              <div class="subs-list" id="subsList">
+                <p class="admin-list-empty">Підключи канал щоб побачити підписників</p>
+              </div>
+            </section>
+
+          </div>
+          </div><!-- /admin-subpanel-subs -->
+
         </div>
 
       </main>
