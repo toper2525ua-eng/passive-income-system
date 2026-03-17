@@ -403,6 +403,7 @@ def get_links_config():
         "payment":  get_cfg("links_payment"),
         "bybit":    get_cfg("links_bybit"),
         "card":     get_cfg("links_card"),
+        "channel":  get_cfg("links_channel"),
     })
 
 
@@ -419,6 +420,8 @@ def set_links_config():
         set_cfg("links_bybit",    data["bybit"].strip())
     if "card" in data:
         set_cfg("links_card",     data["card"].strip())
+    if "channel" in data:
+        set_cfg("links_channel",  data["channel"].strip())
     return jsonify({"ok": True})
 
 
