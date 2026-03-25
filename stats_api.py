@@ -350,6 +350,23 @@ def poll_bot():
                             f"Оплачених замовлень: {orders_count}\n\n"
                             f"Слухаю: message, chat_member, my_chat_member, callback_query"
                         )
+                elif text and chat_id and not text.startswith("/"):
+                    # User wrote a free-form message → forward to all admins
+                    admin_ids = get_all_admin_ids()
+                    if str(chat_id) not in admin_ids:
+                        user_str = f"@{username}" if username else f"ID {chat_id}"
+                        forward_text = (
+                            f"💬 <b>Повідомлення від користувача</b>\n\n"
+                            f"Від: {first} ({user_str})\n"
+                            f"ID: <code>{chat_id}</code>\n\n"
+                            f"<i>{text}</i>"
+                        )
+                        reply_markup = {"inline_keyboard": [[
+                            {"text": "↩️ Відповісти", "url": f"tg://user?id={chat_id}"}
+                        ]]}
+                        for admin_id in admin_ids:
+                            tg_send(admin_id, forward_text, reply_markup)
+                        tg_send(chat_id, "✅ Повідомлення отримано. Адмін відповість найближчим часом.")
         except Exception:
             time.sleep(5)
 
@@ -596,15 +613,31 @@ def add_admin():
 
     # Notify the new admin
     if entry.lstrip("-").isdigit():
-        # Numeric ID — can send directly
-        tg_send(entry,
-            "🔐 <b>Тебе додали як адміна!</b>\n\n"
-            "Тепер ти будеш отримувати сповіщення про нових учасників "
-            "та зможеш підтверджувати або видаляти їх.\n\n"
-            "✅ Доступ активовано автоматично."
-        )
+        # Numeric ID — try to send directly
+        payload = {
+            "chat_id": entry,
+            "text": (
+                "🔐 <b>Тебе додали як адміна!</b>\n\n"
+                "Тепер ти будеш отримувати сповіщення про нових учасників "
+                "та зможеш підтверджувати або видаляти їх.\n\n"
+                "✅ Доступ активовано автоматично."
+            ),
+            "parse_mode": "HTML"
+        }
+        try:
+            r = req.post(f"{TG_API}/sendMessage", json=payload, timeout=10)
+            result = r.json()
+            if not result.get("ok"):
+                # Failed — admin hasn't started the bot
+                tg_send(OWNER_ID,
+                    f"⚠️ Адміна <code>{entry}</code> додано, але він ще не запустив бота.\n"
+                    f"Попроси його написати /start боту @Passive_Income_SystemBot, "
+                    f"щоб отримувати сповіщення."
+                )
+        except Exception:
+            pass
     else:
-        # @username — send invite link so they can /start the bot
+        # @username — can't send directly, notify owner
         tg_send(OWNER_ID,
             f"ℹ️ Адміна <code>{entry}</code> додано.\n"
             f"Щоб активувати доступ — попроси їх написати /start боту @Passive_Income_SystemBot"
