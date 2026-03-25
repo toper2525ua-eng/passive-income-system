@@ -151,6 +151,25 @@
               </div>
             </section>
 
+            <!-- Crypto (TRC/BEP) config -->
+            <section class="admin-section">
+              <div class="admin-section-head">
+                <span class="admin-section-title">💵 Крипто оплата (TRC/BEP)</span>
+              </div>
+              <div class="config-form">
+                <label class="config-label">
+                  <span>TRC-20 гаманець (TRON)</span>
+                  <input class="config-input" id="cfgTrcWallet" type="text" placeholder="TYf..." autocomplete="off" />
+                </label>
+                <label class="config-label">
+                  <span>BEP-20 гаманець (BSC)</span>
+                  <input class="config-input" id="cfgBepWallet" type="text" placeholder="0xe4..." autocomplete="off" />
+                </label>
+                <button class="btn btn--primary btn--sm" id="saveCryptoConfig" type="button">💾 Зберегти крипто</button>
+                <p class="config-hint" id="cryptoConfigMsg"></p>
+              </div>
+            </section>
+
             <!-- TON Payment config -->
             <section class="admin-section">
               <div class="admin-section-head">

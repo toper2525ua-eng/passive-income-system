@@ -632,6 +632,30 @@ def delete_screenshot(shot_id):
     return jsonify({"ok": True})
 
 
+# ── Crypto (TRC/BEP) config (admin) ─────────────────────────────────────────
+
+@app.route("/api/config/crypto", methods=["GET"])
+def get_crypto_config():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    return jsonify({
+        "trc_wallet": get_cfg("trc_wallet"),
+        "bep_wallet": get_cfg("bep_wallet"),
+    })
+
+
+@app.route("/api/config/crypto", methods=["POST"])
+def set_crypto_config():
+    if request.args.get("key") != ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    if "trc_wallet" in data:
+        set_cfg("trc_wallet", data["trc_wallet"].strip())
+    if "bep_wallet" in data:
+        set_cfg("bep_wallet", data["bep_wallet"].strip())
+    return jsonify({"ok": True})
+
+
 # ── TON config (admin) ───────────────────────────────────────────────────────
 
 @app.route("/api/config/ton", methods=["GET"])

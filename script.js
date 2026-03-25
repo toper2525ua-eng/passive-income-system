@@ -549,7 +549,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadConfig(); loadTonConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); loadChannelMembers(); }
+  if (tabId === 'admin') { loadConfig(); loadTonConfig(); loadCryptoConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); loadChannelMembers(); }
 }
 
 /* ─── Event listeners ─── */
@@ -731,6 +731,7 @@ function closeCryptoSheet() {
   document.querySelector('#cryptoSheet')?.setAttribute('aria-hidden', 'true');
 }
 let cryptoManualNetwork = '';
+let _cryptoWallets = { trc: '', bep: '' };
 
 function openCryptoManual(title, network, walletAddr) {
   document.querySelector('#cryptoManualTitle').textContent = title;
@@ -739,7 +740,7 @@ function openCryptoManual(title, network, walletAddr) {
   // Wallet address
   const walletEl = document.querySelector('#cryptoManualWallet');
   const copyBtn  = document.querySelector('#cryptoManualCopyWallet');
-  const addr = walletAddr || localStorage.getItem('pi_trc_wallet') || '—';
+  const addr = walletAddr || '—';
   if (walletEl) walletEl.textContent = addr;
   if (copyBtn) {
     copyBtn.onclick = () => {
@@ -759,8 +760,8 @@ document.querySelector('#cryptoSheetBd')?.addEventListener('click', closeCryptoS
 document.querySelector('#cryptoSheetCancel')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(openPaySheet, 50); });
 
 document.querySelector('#cryptoOptTon')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(openTonSheet, 50); });
-document.querySelector('#cryptoOptTrc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · TRC-20', 'Мережа: TRON (TRC-20)'), 50); });
-document.querySelector('#cryptoOptBep')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · BEP-20', 'Мережа: BNB Smart Chain (BEP-20)'), 50); });
+document.querySelector('#cryptoOptTrc')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · TRC-20', 'Мережа: TRON (TRC-20)', _cryptoWallets.trc || '—'), 50); });
+document.querySelector('#cryptoOptBep')?.addEventListener('click', () => { closeCryptoSheet(); setTimeout(() => openCryptoManual('USDT · BEP-20', 'Мережа: BNB Smart Chain (BEP-20)', _cryptoWallets.bep || '—'), 50); });
 
 document.querySelector('#cryptoManualReceiptBtn')?.addEventListener('click', () => {
   closeCryptoManual();
@@ -1407,6 +1408,42 @@ document.querySelector('#tonSheetBd')?.addEventListener('click', closeTonSheet);
 document.querySelector('#tonSheetClose')?.addEventListener('click', closeTonSheet);
 document.querySelector('#tonVerifyBtn')?.addEventListener('click', _verifyTonPayment);
 document.querySelector('#tonSuccessClose')?.addEventListener('click', closeTonSheet);
+
+/* ─── Admin: Crypto (TRC/BEP) config ─── */
+async function loadCryptoConfig() {
+  try {
+    const res  = await fetch(`${API_BASE}/config/crypto?key=${STATS_KEY}`);
+    const data = await res.json();
+    if (data.trc_wallet) {
+      _cryptoWallets.trc = data.trc_wallet;
+      const el = document.querySelector('#cfgTrcWallet');
+      if (el) el.value = data.trc_wallet;
+    }
+    if (data.bep_wallet) {
+      _cryptoWallets.bep = data.bep_wallet;
+      const el = document.querySelector('#cfgBepWallet');
+      if (el) el.value = data.bep_wallet;
+    }
+  } catch {}
+}
+
+document.querySelector('#saveCryptoConfig')?.addEventListener('click', async () => {
+  const trc_wallet = document.querySelector('#cfgTrcWallet')?.value.trim() || '';
+  const bep_wallet = document.querySelector('#cfgBepWallet')?.value.trim() || '';
+  const msgEl = document.querySelector('#cryptoConfigMsg');
+  try {
+    await fetch(`${API_BASE}/config/crypto?key=${STATS_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trc_wallet, bep_wallet }),
+    });
+    _cryptoWallets.trc = trc_wallet;
+    _cryptoWallets.bep = bep_wallet;
+    if (msgEl) { msgEl.textContent = '✓ Збережено'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
+  } catch {
+    if (msgEl) { msgEl.textContent = '❌ Помилка'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
+  }
+});
 
 /* ─── Admin: TON config ─── */
 async function loadTonConfig() {
