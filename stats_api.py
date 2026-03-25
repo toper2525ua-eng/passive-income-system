@@ -62,8 +62,33 @@ def get_all_admin_ids():
     return ids
 
 
-def handle_start(chat_id, first_name):
+def handle_start(chat_id, first_name, username=""):
     name = first_name or "друже"
+
+    # Check if this user was added as admin via @username — activate them
+    if username:
+        conn = get_db()
+        row = conn.execute(
+            "SELECT id FROM admins WHERE entry = ?", (f"@{username.lower()}",)
+        ).fetchone()
+        if row:
+            # Replace @username entry with numeric ID so bot can notify them
+            numeric_id = str(chat_id)
+            conn.execute(
+                "UPDATE admins SET entry = ? WHERE entry = ?",
+                (numeric_id, f"@{username.lower()}")
+            )
+            conn.commit()
+            conn.close()
+            tg_send(chat_id,
+                f"🔐 <b>Доступ адміна активовано!</b>\n\n"
+                f"Привіт, {name}! Тебе додали як адміна боту.\n"
+                f"Тепер ти будеш отримувати сповіщення про нових учасників "
+                f"та зможеш підтверджувати або видаляти їх."
+            )
+            return
+        conn.close()
+
     text = (
         f"👋 Привіт, {name}!\n\n"
         "Тут зібрана система пасивного доходу — торгові боти, "
@@ -302,10 +327,11 @@ def poll_bot():
                     continue
                 msg     = u.get("message", {})
                 text    = msg.get("text", "")
-                chat_id = msg.get("chat", {}).get("id")
-                first   = msg.get("from", {}).get("first_name", "")
+                chat_id  = msg.get("chat", {}).get("id")
+                first    = msg.get("from", {}).get("first_name", "")
+                username = msg.get("from", {}).get("username", "")
                 if text.startswith("/start") and chat_id:
-                    handle_start(chat_id, first)
+                    handle_start(chat_id, first, username)
                 elif text.startswith("/setwallet") and chat_id:
                     handle_setwallet(chat_id, text)
                 elif text.startswith("/setchannel") and chat_id:
@@ -559,12 +585,31 @@ def add_admin():
     if not entry:
         return jsonify({"error": "empty"}), 400
     conn = get_db()
-    try:
-        conn.execute("INSERT INTO admins (entry) VALUES (?)", (entry,))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        pass
+    already_exists = conn.execute("SELECT id FROM admins WHERE entry = ?", (entry,)).fetchone()
+    if not already_exists:
+        try:
+            conn.execute("INSERT INTO admins (entry) VALUES (?)", (entry,))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            pass
     conn.close()
+
+    # Notify the new admin
+    if entry.lstrip("-").isdigit():
+        # Numeric ID — can send directly
+        tg_send(entry,
+            "🔐 <b>Тебе додали як адміна!</b>\n\n"
+            "Тепер ти будеш отримувати сповіщення про нових учасників "
+            "та зможеш підтверджувати або видаляти їх.\n\n"
+            "✅ Доступ активовано автоматично."
+        )
+    else:
+        # @username — send invite link so they can /start the bot
+        tg_send(OWNER_ID,
+            f"ℹ️ Адміна <code>{entry}</code> додано.\n"
+            f"Щоб активувати доступ — попроси їх написати /start боту @Passive_Income_SystemBot"
+        )
+
     return jsonify({"ok": True})
 
 
