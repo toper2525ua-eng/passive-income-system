@@ -336,6 +336,25 @@ def poll_bot():
                     handle_setwallet(chat_id, text)
                 elif text.startswith("/setchannel") and chat_id:
                     handle_setchannel(chat_id, text)
+                elif text.startswith("/admins") and chat_id:
+                    if str(chat_id) == OWNER_ID:
+                        admin_ids = get_all_admin_ids()
+                        lines = [f"👥 <b>Список адмінів ({len(admin_ids)}):</b>\n"]
+                        for aid in admin_ids:
+                            # Try to send test ping
+                            try:
+                                r = req.post(f"{TG_API}/sendMessage", json={
+                                    "chat_id": aid,
+                                    "text": "🔔 Тест сповіщення — ти активний адмін.",
+                                    "parse_mode": "HTML"
+                                }, timeout=8)
+                                ok = r.json().get("ok", False)
+                                status = "✅ активний" if ok else "❌ не запустив бота"
+                            except Exception:
+                                status = "⚠️ помилка"
+                            tag = " (власник)" if aid == OWNER_ID else ""
+                            lines.append(f"• <code>{aid}</code>{tag} — {status}")
+                        tg_send(chat_id, "\n".join(lines))
                 elif text.startswith("/test") and chat_id:
                     if str(chat_id) == OWNER_ID:
                         channel_id = get_cfg("channel_id") or "не встановлено"
