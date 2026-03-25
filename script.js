@@ -1420,14 +1420,20 @@ async function _verifyTonPayment() {
     if (data.status === 'paid' || data.status === 'already_paid') {
       _showTonSuccess();
     } else if (data.status === 'not_found') {
-      _setTonStatus('Транзакцію не знайдено. Зачекай хвилину і спробуй ще раз.', 'error');
+      _setTonStatus('Транзакцію не знайдено. Зачекай 1–2 хв і спробуй ще раз.', 'error');
       if (verBtn) { verBtn.disabled = false; verBtn.textContent = '↻ Перевірити знову'; }
     } else if (data.status === 'expired' || res.status === 410) {
       _setTonStatus('⏰ Час вийшов. Закрий і відкрий заново.', 'error');
       if (verBtn) { verBtn.disabled = true; verBtn.textContent = 'Час вийшов'; }
+    } else if (data.status === 'api_error') {
+      _setTonStatus('✅ Оплату отримано! Адмін підтвердить доступ вручну протягом кількох хвилин.', 'ok');
+      if (verBtn) { verBtn.disabled = true; verBtn.textContent = 'Очікуй підтвердження'; }
+    } else if (data.status === 'wrong_amount') {
+      _setTonStatus('⚠️ Знайдено оплату з іншою сумою. Адмін перевірить і підтвердить.', 'ok');
+      if (verBtn) { verBtn.disabled = true; verBtn.textContent = 'Очікуй підтвердження'; }
     } else {
       _setTonStatus('Помилка перевірки. Спробуй ще.', 'error');
-      if (verBtn) { verBtn.disabled = false; verBtn.textContent = '✓ Я надіслав оплату'; }
+      if (verBtn) { verBtn.disabled = false; verBtn.textContent = '↻ Спробувати знову'; }
     }
   } catch {
     _setTonStatus('Помилка з\'єднання.', 'error');

@@ -541,15 +541,19 @@ def _extract_memo(tx):
 
 def check_ton_transaction(wallet, expected_memo, expected_amount_raw):
     """Query tonapi.io for a matching USDT jetton_notify transaction.
-    Returns (verified: bool, tx_hash: str|None)."""
+    Returns (status: str, tx_hash: str|None)
+      status: 'verified' | 'not_found' | 'wrong_amount' | 'api_error'
+    """
     url     = f"https://tonapi.io/v2/blockchain/accounts/{wallet}/transactions?limit=100"
     headers = {}
     if TONAPI_KEY:
         headers["Authorization"] = f"Bearer {TONAPI_KEY}"
     try:
         r = req.get(url, headers=headers, timeout=15)
+        if r.status_code == 429:
+            return "api_error", None
         if r.status_code != 200:
-            return False, None
+            return "api_error", None
         for tx in r.json().get("transactions", []):
             in_msg = tx.get("in_msg", {})
             if in_msg.get("decoded_op_name") != "jetton_notify":
@@ -557,19 +561,24 @@ def check_ton_transaction(wallet, expected_memo, expected_amount_raw):
             memo = _extract_memo(tx)
             if not memo or memo.strip() != expected_memo:
                 continue
+            # Memo matched — check amount
             decoded    = in_msg.get("decoded_body") or {}
             raw_amount = decoded.get("amount")
             if not raw_amount:
-                continue
+                # Memo matched but can't read amount — approve anyway
+                return "verified", tx.get("hash", "")
             try:
                 amount = int(raw_amount)
             except (ValueError, TypeError):
-                continue
+                return "verified", tx.get("hash", "")
             if amount >= expected_amount_raw:
-                return True, tx.get("hash", "")
+                return "verified", tx.get("hash", "")
+            else:
+                # Memo matched but amount too low
+                return "wrong_amount", tx.get("hash", "")
     except Exception:
-        pass
-    return False, None
+        return "api_error", None
+    return "not_found", None
 
 
 # ── Existing routes ──────────────────────────────────────────────────────────
@@ -986,20 +995,28 @@ def create_order():
     conn = get_db()
     now_str = datetime.now().isoformat()
 
-    # Return existing pending order if still valid
+    # Return existing pending order if still valid AND price hasn't changed
     existing = conn.execute(
         "SELECT * FROM orders WHERE tg_user_id=? AND status='pending' AND expires_at>?",
         (tg_user_id, now_str)
     ).fetchone()
     if existing:
-        conn.close()
-        return jsonify({
-            "order_id":       existing["id"],
-            "wallet_address": wallet,
-            "amount_usdt":    existing["amount_usdt"],
-            "memo":           existing["memo"],
-            "expires_at":     existing["expires_at"],
-        })
+        if abs(float(existing["amount_usdt"]) - price) < 0.01:
+            # Price unchanged — return existing order
+            conn.close()
+            return jsonify({
+                "order_id":       existing["id"],
+                "wallet_address": wallet,
+                "amount_usdt":    existing["amount_usdt"],
+                "memo":           existing["memo"],
+                "expires_at":     existing["expires_at"],
+            })
+        else:
+            # Price changed — expire old order, create new one
+            conn.execute(
+                "UPDATE orders SET status='expired' WHERE id=?", (existing["id"],)
+            )
+            conn.commit()
 
     # Expire old pending orders for this user
     conn.execute(
@@ -1066,9 +1083,42 @@ def verify_payment():
     wallet       = get_cfg("ton_wallet")
     expected_raw = int(order["amount_usdt"] * USDT_DECIMALS)
 
-    verified, tx_hash = check_ton_transaction(wallet, order["memo"], expected_raw)
+    tx_status, tx_hash = check_ton_transaction(wallet, order["memo"], expected_raw)
 
-    if not verified:
+    if tx_status == "api_error":
+        conn.close()
+        # Notify admins to manually confirm
+        name_str = f"ID: {tg_user_id}"
+        for admin_id in get_all_admin_ids():
+            tg_send(admin_id,
+                f"⚠️ <b>TON оплата — потрібна ручна перевірка</b>\n\n"
+                f"Юзер: <code>{tg_user_id}</code>\n"
+                f"Memo: <code>{order['memo']}</code>\n"
+                f"Сума: {order['amount_usdt']} USDT\n\n"
+                f"API тонapi.io недоступний. Перевір вручну і підтвердь:",
+                {"inline_keyboard": [[
+                    {"text": "✅ Підтвердити вручну", "callback_data": f"cpay_{tg_user_id}"},
+                ]]}
+            )
+        return jsonify({"status": "api_error"})
+
+    if tx_status == "wrong_amount":
+        conn.close()
+        for admin_id in get_all_admin_ids():
+            tg_send(admin_id,
+                f"⚠️ <b>TON оплата — неправильна сума</b>\n\n"
+                f"Юзер: <code>{tg_user_id}</code>\n"
+                f"Memo: <code>{order['memo']}</code>\n"
+                f"Очікувалось: {order['amount_usdt']} USDT\n\n"
+                f"Транзакція знайдена але сума менша. Перевір:",
+                {"inline_keyboard": [[
+                    {"text": "✅ Підтвердити", "callback_data": f"cpay_{tg_user_id}"},
+                    {"text": "❌ Відхилити",   "callback_data": f"decl_{tg_user_id}"},
+                ]]}
+            )
+        return jsonify({"status": "wrong_amount"})
+
+    if tx_status == "not_found":
         conn.close()
         return jsonify({"status": "not_found"})
 
