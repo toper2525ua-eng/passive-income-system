@@ -32,10 +32,27 @@ def tg_send(chat_id, text, reply_markup=None):
 
 
 def tg_edit(chat_id, message_id, text):
+    """Try editMessageText, fall back to editMessageCaption for photo messages."""
     try:
-        req.post(f"{TG_API}/editMessageText", json={
+        r = req.post(f"{TG_API}/editMessageText", json={
             "chat_id": chat_id, "message_id": message_id,
             "text": text, "parse_mode": "HTML"
+        }, timeout=8)
+        if not r.json().get("ok"):
+            # Message might be a photo — use editMessageCaption
+            req.post(f"{TG_API}/editMessageCaption", json={
+                "chat_id": chat_id, "message_id": message_id,
+                "caption": text, "parse_mode": "HTML"
+            }, timeout=8)
+    except Exception:
+        pass
+
+def tg_remove_buttons(chat_id, message_id):
+    """Remove inline keyboard from a message."""
+    try:
+        req.post(f"{TG_API}/editMessageReplyMarkup", json={
+            "chat_id": chat_id, "message_id": message_id,
+            "reply_markup": {"inline_keyboard": []}
         }, timeout=8)
     except Exception:
         pass
@@ -179,8 +196,13 @@ def handle_callback_query(update):
 
     channel_id = get_cfg("channel_id")
 
+    def notify_all_admins_action(action_text, exclude_id=None):
+        """Send action result to all admins except the one who acted."""
+        for aid in get_all_admin_ids():
+            if aid != exclude_id:
+                tg_send(aid, action_text)
+
     if data.startswith("apr_"):
-        # Approve channel join
         uid = data[4:]
         save_member(uid, "", "", "member")
         conn = get_db()
@@ -196,10 +218,11 @@ def handle_callback_query(update):
             )
             conn.commit()
         conn.close()
-        tg_edit(chat_id, msg_id, orig_text + "\n\n✅ <b>Підтверджено</b>")
+        tg_remove_buttons(chat_id, msg_id)
+        tg_send(from_id, f"✅ <b>Підтверджено</b>\nЮзер <code>{uid}</code> доданий до каналу.")
+        notify_all_admins_action(f"✅ <b>Адмін підтвердив</b> юзера <code>{uid}</code>", exclude_id=from_id)
 
     elif data.startswith("kck_"):
-        # Kick from channel
         uid = data[4:]
         if channel_id:
             try:
@@ -208,10 +231,11 @@ def handle_callback_query(update):
             except Exception:
                 pass
         save_member(uid, "", "", "kicked")
-        tg_edit(chat_id, msg_id, orig_text + "\n\n🚫 <b>Видалено з каналу</b>")
+        tg_remove_buttons(chat_id, msg_id)
+        tg_send(from_id, f"🚫 <b>Видалено</b>\nЮзер <code>{uid}</code> видалений з каналу.")
+        notify_all_admins_action(f"🚫 <b>Адмін видалив</b> юзера <code>{uid}</code>", exclude_id=from_id)
 
     elif data.startswith("cpay_"):
-        # Confirm card payment → mark paid + send access link
         uid = data[5:]
         conn = get_db()
         paid = conn.execute(
@@ -233,26 +257,30 @@ def handle_callback_query(update):
                     "Ось твоє посилання для доступу до системи 👇\n"
                     f"{access_link}"
                 )
-            tg_edit(chat_id, msg_id, orig_text + "\n\n✅ <b>Оплату підтверджено, доступ надіслано</b>")
+            tg_remove_buttons(chat_id, msg_id)
+            tg_send(from_id, f"✅ <b>Оплату підтверджено!</b>\nДоступ надіслано юзеру <code>{uid}</code>.")
+            notify_all_admins_action(f"✅ <b>Адмін підтвердив оплату</b> юзера <code>{uid}</code>. Доступ надіслано.", exclude_id=from_id)
         else:
             conn.close()
-            tg_edit(chat_id, msg_id, orig_text + "\n\n⚠️ <b>Вже підтверджено раніше</b>")
+            tg_send(from_id, f"⚠️ Юзер <code>{uid}</code> вже має доступ (підтверджено раніше).")
 
     elif data.startswith("decl_"):
-        # Decline payment
         uid = data[5:]
         tg_send(uid,
             "❌ <b>Оплату не підтверджено</b>\n\n"
             "Будь ласка, надішли правильний скріншот або зв'яжись з адміном."
         )
-        tg_edit(chat_id, msg_id, orig_text + "\n\n❌ <b>Відхилено</b>")
+        tg_remove_buttons(chat_id, msg_id)
+        tg_send(from_id, f"❌ <b>Оплату відхилено.</b>\nЮзеру <code>{uid}</code> надіслано відмову.")
+        notify_all_admins_action(f"❌ <b>Адмін відхилив оплату</b> юзера <code>{uid}</code>.", exclude_id=from_id)
 
     elif data.startswith("banu_"):
-        # Ban user from bot interactions (blacklist in DB)
         uid = data[5:]
         set_cfg(f"banned_{uid}", "1")
         tg_send(uid, "⛔ Вас заблоковано. Зверніться до адміна.")
-        tg_edit(chat_id, msg_id, orig_text + "\n\n⛔ <b>Користувача заблоковано</b>")
+        tg_remove_buttons(chat_id, msg_id)
+        tg_send(from_id, f"⛔ <b>Юзера заблоковано.</b>\n<code>{uid}</code> більше не може надсилати заявки.")
+        notify_all_admins_action(f"⛔ <b>Адмін заблокував</b> юзера <code>{uid}</code>.", exclude_id=from_id)
 
 
 def handle_chat_member_update(update):
