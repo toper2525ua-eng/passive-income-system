@@ -663,6 +663,22 @@ document.querySelector('#cfgNewAdmin')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') document.querySelector('#addAdminBtn')?.click();
 });
 
+/* ─── Telegram WebApp viewport fix ─── */
+(function () {
+  const tg = window.Telegram?.WebApp;
+  if (!tg) return;
+
+  function applyHeight() {
+    const h = tg.viewportStableHeight || tg.viewportHeight;
+    if (h && h > 100) {
+      document.documentElement.style.setProperty('--tg-viewport-stable-height', h + 'px');
+    }
+  }
+
+  applyHeight();
+  tg.onEvent('viewportChanged', applyHeight);
+})();
+
 /* ─── Admin: check access (Telegram WebApp only) ─── */
 async function checkAdminAccess() {
   try {
