@@ -204,12 +204,12 @@ def handle_callback_query(update):
 
     if data.startswith("apr_"):
         uid = data[4:]
-        save_member(uid, "", "", "member")
         conn = get_db()
         paid = conn.execute(
             "SELECT id FROM orders WHERE tg_user_id=? AND status='paid'", (uid,)
         ).fetchone()
         if not paid:
+            save_member(uid, "", "", "member")
             conn.execute(
                 "INSERT INTO orders (id, tg_user_id, amount_usdt, memo, status, created_at, expires_at, verified_at) "
                 "VALUES (?,?,?,?,'paid',?,?,?)",
@@ -217,10 +217,13 @@ def handle_callback_query(update):
                  datetime.now().isoformat(), datetime.now().isoformat(), datetime.now().isoformat())
             )
             conn.commit()
-        conn.close()
-        tg_remove_buttons(chat_id, msg_id)
-        tg_send(from_id, f"✅ <b>Підтверджено</b>\nЮзер <code>{uid}</code> доданий до каналу.")
-        notify_all_admins_action(f"✅ <b>Адмін підтвердив</b> юзера <code>{uid}</code>", exclude_id=from_id)
+            conn.close()
+            tg_remove_buttons(chat_id, msg_id)
+            tg_send(from_id, f"✅ <b>Підтверджено</b>\nЮзер <code>{uid}</code> доданий до каналу.")
+            notify_all_admins_action(f"✅ <b>Адмін підтвердив</b> юзера <code>{uid}</code>", exclude_id=from_id)
+        else:
+            conn.close()
+            tg_answer_cb(cq_id, "⚠️ Вже підтверджено раніше")
 
     elif data.startswith("kck_"):
         uid = data[4:]
@@ -262,7 +265,8 @@ def handle_callback_query(update):
             notify_all_admins_action(f"✅ <b>Адмін підтвердив оплату</b> юзера <code>{uid}</code>. Доступ надіслано.", exclude_id=from_id)
         else:
             conn.close()
-            tg_send(from_id, f"⚠️ Юзер <code>{uid}</code> вже має доступ (підтверджено раніше).")
+            # Already confirmed — just show silent popup, no extra message
+            tg_answer_cb(cq_id, "⚠️ Вже підтверджено раніше")
 
     elif data.startswith("decl_"):
         uid = data[5:]
