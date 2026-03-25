@@ -99,7 +99,7 @@
           </div>
           <div class="panel-footer panel-footer--cta">
             <div class="cta-info">
-              <strong>100$ одноразово</strong>
+              <strong><span class="js-price">100$</span> одноразово</strong>
               <small>канал, боти, інструкції, оновлення</small>
             </div>
             <a class="btn btn--primary" data-link="payment" href="#">Отримати доступ</a>
@@ -177,6 +177,22 @@
               </div>
             </section>
 
+            <!-- Price config -->
+            <section class="admin-section">
+              <div class="admin-section-head">
+                <span class="admin-section-title">💵 Ціна доступу</span>
+              </div>
+              <div class="config-form">
+                <label class="config-label">
+                  <span>Ціна (USDT / $)</span>
+                  <input class="config-input" id="cfgPrice" type="number" placeholder="100" min="1" step="1" />
+                </label>
+                <p class="config-hint">Ціна підставляється скрізь в додатку і у всіх методах оплати</p>
+                <button class="btn btn--primary btn--sm" id="savePriceBtn" type="button">💾 Зберегти ціну</button>
+                <p class="config-hint" id="priceMsg"></p>
+              </div>
+            </section>
+
             <!-- TON Payment config -->
             <section class="admin-section">
               <div class="admin-section-head">
@@ -188,10 +204,7 @@
                   <input class="config-input" id="cfgTonWallet" type="text" placeholder="UQA..." autocomplete="off" />
                 </label>
                 <p class="config-hint config-hint--lock" id="tonWalletHint" style="display:none">🔒 Змінити лише через бота: <code>/setwallet UQA...</code></p>
-                <label class="config-label">
-                  <span>Ціна (USDT)</span>
-                  <input class="config-input" id="cfgTonPrice" type="number" placeholder="100" min="1" step="1" />
-                </label>
+                <input type="hidden" id="cfgTonPrice" value="100" />
                 <label class="config-label">
                   <span>Посилання після оплати</span>
                   <input class="config-input" id="cfgTonAccessLink" type="url" placeholder="https://t.me/+..." />

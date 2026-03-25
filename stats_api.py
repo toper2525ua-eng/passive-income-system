@@ -795,6 +795,7 @@ def get_links_config():
         "card":       get_cfg("links_card"),
         "channel":    get_cfg("links_channel"),
         "channel_id": get_cfg("channel_id"),
+        "price":      get_cfg("ton_price", "100"),
     })
 
 

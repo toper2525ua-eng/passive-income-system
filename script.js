@@ -549,7 +549,7 @@ function switchTab(tabId) {
   document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("is-active"));
   document.querySelector(`#panel-${tabId}`)?.classList.add("is-active");
   document.querySelector(`.nav-item[data-tab="${tabId}"]`)?.classList.add("is-active");
-  if (tabId === 'admin') { loadConfig(); loadTonConfig(); loadCryptoConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); loadChannelMembers(); }
+  if (tabId === 'admin') { loadConfig(); loadTonConfig(); loadCryptoConfig(); renderAdminsList(); loadScreenshots().then(renderAdminScreenshots); loadChannelMembers(); loadPriceConfig(); }
 }
 
 /* ─── Event listeners ─── */
@@ -869,10 +869,59 @@ function applyConfig(links) {
   if (links.payment)  appConfig.links.payment  = links.payment;
   if (links.bybit)    appConfig.links.bybit    = links.bybit;
   if (links.card)     localStorage.setItem('pi_card', links.card);
+  if (links.price)    applyPrice(links.price);
   bindConfiguredLinks();
   renderFaqTab();
   renderAccessTab();
 }
+
+function applyPrice(price) {
+  const p = String(price).trim();
+  if (!p) return;
+  // Update all price display elements
+  document.querySelectorAll('.js-price').forEach(el => { el.textContent = p + '$'; });
+  // Update appConfig screen title dynamically
+  if (appConfig.screens.payment) {
+    appConfig.screens.payment.title = `Доступ до системи — ${p}$ одноразово.`;
+  }
+  // Sync hidden TON price input
+  const tonPriceEl = document.querySelector('#cfgTonPrice');
+  if (tonPriceEl) tonPriceEl.value = p;
+  // Sync price admin input
+  const cfgPriceEl = document.querySelector('#cfgPrice');
+  if (cfgPriceEl && document.activeElement !== cfgPriceEl) cfgPriceEl.value = p;
+}
+
+async function loadPriceConfig() {
+  try {
+    const res  = await fetch(`${API_BASE}/config/ton?key=${STATS_KEY}`);
+    const data = await res.json();
+    if (data.price) {
+      const cfgPriceEl = document.querySelector('#cfgPrice');
+      if (cfgPriceEl) cfgPriceEl.value = data.price;
+      applyPrice(data.price);
+    }
+  } catch {}
+}
+
+document.querySelector('#savePriceBtn')?.addEventListener('click', async () => {
+  const price = document.querySelector('#cfgPrice')?.value.trim() || '100';
+  const msgEl = document.querySelector('#priceMsg');
+  try {
+    await fetch(`${API_BASE}/config/ton?key=${STATS_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ price }),
+    });
+    applyPrice(price);
+    // Also update TON price input to stay in sync
+    const tonPriceEl = document.querySelector('#cfgTonPrice');
+    if (tonPriceEl) tonPriceEl.value = price;
+    if (msgEl) { msgEl.textContent = '✓ Ціну збережено'; setTimeout(() => { msgEl.textContent = ''; }, 2000); }
+  } catch {
+    if (msgEl) { msgEl.textContent = '✗ Помилка збереження'; setTimeout(() => { msgEl.textContent = ''; }, 3000); }
+  }
+});
 
 document.querySelector('#saveConfig')?.addEventListener('click', async () => {
   const links = {
