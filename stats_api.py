@@ -225,15 +225,18 @@ def handle_callback_query(update):
                  datetime.now().isoformat(), datetime.now().isoformat(), datetime.now().isoformat())
             )
             conn.commit()
-        conn.close()
-        access_link = get_cfg("ton_access_link")
-        if access_link and uid:
-            tg_send(uid,
-                "✅ <b>Оплату підтверджено!</b>\n\n"
-                "Ось твоє посилання для доступу до системи 👇\n"
-                f"{access_link}"
-            )
-        tg_edit(chat_id, msg_id, orig_text + "\n\n✅ <b>Оплату підтверджено, доступ надіслано</b>")
+            conn.close()
+            access_link = get_cfg("ton_access_link")
+            if access_link and uid:
+                tg_send(uid,
+                    "✅ <b>Оплату підтверджено!</b>\n\n"
+                    "Ось твоє посилання для доступу до системи 👇\n"
+                    f"{access_link}"
+                )
+            tg_edit(chat_id, msg_id, orig_text + "\n\n✅ <b>Оплату підтверджено, доступ надіслано</b>")
+        else:
+            conn.close()
+            tg_edit(chat_id, msg_id, orig_text + "\n\n⚠️ <b>Вже підтверджено раніше</b>")
 
     elif data.startswith("decl_"):
         # Decline payment
