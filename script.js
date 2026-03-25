@@ -1610,6 +1610,7 @@ renderFaqTab();
 renderAccessTab();
 trackView('home');
 checkAdminAccess();
+loadCryptoConfig(); // Load TRC/BEP wallets for all users on page start
 
 // Load screenshots from server, then re-render results if needed
 loadScreenshots().then(() => {
